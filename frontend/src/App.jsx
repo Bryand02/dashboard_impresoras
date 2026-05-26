@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
 import { PrinterConfigModal } from "./components/PrinterConfigModal";
+import { APP_VERSION } from "./config/version";
 import { fallbackData } from "./data/fallbackData";
 import { DashboardSection } from "./sections/DashboardSection";
 import {
@@ -28,6 +29,7 @@ function App() {
 
   useEffect(() => {
     let socket;
+    document.title = `Printer Hub v${APP_VERSION}`;
     fetchBootstrap()
       .then((bootstrap) => {
         setData({
@@ -164,7 +166,12 @@ function App() {
         <header className="glass rounded-[24px] border border-white/10 p-4 shadow-glow">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h1 className="font-display text-3xl font-bold leading-none sm:text-4xl">Printer Hub</h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="font-display text-3xl font-bold leading-none sm:text-4xl">Printer Hub</h1>
+                <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
+                  v{APP_VERSION}
+                </span>
+              </div>
               <p className="mt-2 text-sm text-slate-400">Seguimiento rapido de la flota y biblioteca unificada de G-codes.</p>
               {activityMessage && <p className="mt-2 text-xs text-slate-500">{activityMessage}</p>}
             </div>
