@@ -1,12 +1,16 @@
 import { printerConfigService } from "./printerConfigService.js";
 import { queueService } from "./queueService.js";
+import { normalizeMaterial } from "../utils/gcodeParser.js";
 
 class PrinterAssignmentService {
   getAvailabilityReason(printer, file) {
     if (!printer) return "Impresora no encontrada";
     if (printer.powerState !== "on") return "Apagada";
-    if (!["online", "finished"].includes(printer.state)) return `Estado actual: ${printer.state}`;
-    if (!printer.materials.includes(file.material)) return `Material no compatible: ${file.material}`;
+    if (printer.state === "finished") return "Pendiente confirmar lista";
+    if (!["online", "ready"].includes(printer.state)) return `Estado actual: ${printer.state}`;
+    const printerMaterials = (printer.materials || []).map(normalizeMaterial);
+    const fileMaterial = normalizeMaterial(file.material);
+    if (fileMaterial && !printerMaterials.includes(fileMaterial)) return `Material no compatible: ${file.material}`;
     if (
       file.dimensions?.x > printer.volume.x ||
       file.dimensions?.y > printer.volume.y ||
@@ -15,6 +19,12 @@ class PrinterAssignmentService {
       return "Volumen insuficiente";
     }
     return "Disponible";
+  }
+
+  canSelectManually(printer) {
+    if (!printer) return false;
+    if (printer.powerState !== "on") return false;
+    return ["online", "ready", "finished"].includes(printer.state);
   }
 
   getEligiblePrinters(file) {
@@ -56,6 +66,7 @@ class PrinterAssignmentService {
         state: printer.state,
         powerState: printer.powerState,
         activeMaterial: printer.activeMaterial,
+        selectableManually: this.canSelectManually(printer),
         reason,
         score,
         recommended: false
@@ -97,18 +108,27 @@ class PrinterAssignmentService {
 
     const reason = this.getAvailabilityReason(selectedPrinter, file);
     if (reason !== "Disponible" && mode === "auto") {
-      const queued = this.enqueue(file.id, mode, null);
-      return { mode: "queued", selectedPrinter: null, queued };
+      return {
+        mode: "blocked",
+        selectedPrinter: null,
+        reason: "No hay impresoras disponibles para envio automatico",
+        message: "No hay impresoras disponibles para enviar este archivo ahora."
+      };
     }
 
-    if (reason !== "Disponible" && mode === "manual") {
-      const queued = this.enqueue(file.id, mode, selectedPrinter.id);
-      return { mode: "queued_manual", selectedPrinter, queued, reason };
+    if (mode === "manual" && !this.canSelectManually(selectedPrinter)) {
+      return {
+        mode: "blocked",
+        selectedPrinter,
+        reason: `Estado actual: ${selectedPrinter.state}`,
+        message: `${selectedPrinter.name} no se puede seleccionar manualmente en este estado.`
+      };
     }
 
     return {
-      mode: "assigned",
-      selectedPrinter
+      mode: mode === "manual" ? "assigned_manual" : "assigned",
+      selectedPrinter,
+      reason: mode === "manual" && reason !== "Disponible" ? reason : null
     };
   }
 

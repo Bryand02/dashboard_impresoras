@@ -1,6 +1,6 @@
 import { PrinterRow } from "../components/PrinterRow";
 
-export function DashboardSection({ printers, onOpenConfig, onToggleLight, onPowerAction }) {
+export function DashboardSection({ printers, onOpenConfig, onToggleLight, onPowerAction, onMarkReady }) {
   return (
     <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
       {printers.map((printer) => (
@@ -10,6 +10,7 @@ export function DashboardSection({ printers, onOpenConfig, onToggleLight, onPowe
           onOpenConfig={() => onOpenConfig(printer)}
           onToggleLight={() => onToggleLight(printer)}
           onPowerAction={(action) => onPowerAction(printer, action)}
+          onMarkReady={() => onMarkReady(printer)}
         />
       ))}
     </section>

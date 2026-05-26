@@ -22,6 +22,7 @@ class PrinterConfigService {
       powerEnabled: payload.powerEnabled ?? true,
       powerState: "off",
       powerOverride: payload.powerOverride || null,
+      readyOverride: payload.readyOverride ?? false,
       lightEnabled: payload.lightEnabled ?? false,
       lightState: payload.lightState || "off",
       queueSize: 0,
@@ -64,8 +65,42 @@ class PrinterConfigService {
     if (!printer) return null;
     printer.powerState = action === "on" ? "on" : "off";
     printer.powerOverride = printer.powerState;
+    printer.readyOverride = false;
     printer.state = action === "on" ? "online" : "offline";
     printer.telemetry.currentFile = action === "on" ? "Encendida por Home Assistant" : "Apagada por Home Assistant";
+    return printer;
+  }
+
+  syncPowerState(id, powerState) {
+    const printer = this.getById(id);
+    if (!printer) return null;
+    printer.powerState = powerState === "on" ? "on" : "off";
+    printer.powerOverride = printer.powerState;
+    if (printer.powerState === "off") {
+      printer.readyOverride = false;
+      printer.state = "offline";
+      printer.telemetry = {
+        ...printer.telemetry,
+        velocity: 0,
+        nozzle: {
+          ...printer.telemetry.nozzle,
+          target: 0
+        },
+        bed: {
+          ...printer.telemetry.bed,
+          target: 0
+        },
+        currentFile: "Apagada por Home Assistant"
+      };
+    }
+    return printer;
+  }
+
+  markReady(id) {
+    const printer = this.getById(id);
+    if (!printer) return null;
+    printer.readyOverride = true;
+    printer.state = "ready";
     return printer;
   }
 
@@ -74,11 +109,20 @@ class PrinterConfigService {
     if (index === -1) return null;
     const current = this.printers[index];
     const effectivePowerState = current.powerOverride || snapshot.powerState || current.powerState;
-    const effectiveState = effectivePowerState === "off" ? "offline" : snapshot.state;
+    let readyOverride = current.readyOverride ?? false;
+    if (snapshot.state && snapshot.state !== "finished") {
+      readyOverride = false;
+    }
+    const effectiveState = effectivePowerState === "off"
+      ? "offline"
+      : snapshot.state === "finished" && readyOverride
+        ? "ready"
+        : snapshot.state;
     this.printers[index] = {
       ...current,
       ...snapshot,
       powerState: effectivePowerState,
+      readyOverride,
       state: effectiveState,
       telemetry: {
         ...current.telemetry,

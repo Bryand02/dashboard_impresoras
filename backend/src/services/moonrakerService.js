@@ -113,7 +113,9 @@ class MoonrakerService {
   }
 
   async syncLivePrinters() {
-    const livePrinters = printerConfigService.list().filter((printer) => printer.syncMode === "live" && printer.moonrakerUrl);
+    const livePrinters = printerConfigService
+      .list()
+      .filter((printer) => printer.syncMode === "live" && printer.moonrakerUrl && printer.powerState === "on");
     await Promise.all(
       livePrinters.map(async (printer) => {
         try {

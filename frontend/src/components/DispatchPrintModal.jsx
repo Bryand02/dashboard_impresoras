@@ -5,9 +5,12 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
   const [selectedPrinterId, setSelectedPrinterId] = useState(preview?.suggestedPrinter?.id || preview?.printers?.[0]?.id || "");
 
   const selectablePrinters = useMemo(
-    () => (preview?.printers || []).filter((printer) => printer.reason === "Disponible"),
+    () => (preview?.printers || []).filter((printer) => printer.selectableManually),
     [preview]
   );
+  const canConfirm = mode === "auto"
+    ? Boolean(preview?.suggestedPrinter)
+    : selectablePrinters.some((printer) => printer.id === selectedPrinterId);
 
   if (!file || !preview) return null;
 
@@ -34,7 +37,7 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
               </div>
             ) : (
               <div className="mt-3 rounded-3xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm text-amber-100">
-                No hay impresoras libres ahora mismo. Puedes ponerlo en cola o elegir manualmente una impresora ocupada.
+                No hay sugerencia automatica en este momento. Aun puedes elegir manualmente una impresora que no este imprimiendo.
               </div>
             )}
 
@@ -60,7 +63,7 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
             <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Impresoras</p>
             <div className="mt-3 space-y-2">
               {preview.printers.map((printer) => {
-                const isSelectable = mode === "manual";
+                const isSelectable = mode === "manual" && printer.selectableManually;
                 const active = selectedPrinterId === printer.id;
                 return (
                   <button
@@ -70,7 +73,7 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
                     onClick={() => setSelectedPrinterId(printer.id)}
                     className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
                       active ? "border-white bg-white text-slate-950" : "border-white/10 bg-black/20 text-slate-100"
-                    } ${!isSelectable ? "opacity-70" : ""}`}
+                    } ${!isSelectable ? "cursor-not-allowed opacity-55" : ""}`}
                   >
                     <div>
                       <p className="font-semibold">{printer.name}</p>
@@ -89,13 +92,16 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
         <div className="mt-5 flex justify-end">
           <button
             type="button"
+            disabled={!canConfirm}
             onClick={() =>
               onConfirm({
                 mode,
                 printerId: mode === "manual" ? selectedPrinterId : null
               })
             }
-            className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100"
+            className={`rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 ${
+              !canConfirm ? "cursor-not-allowed opacity-40" : ""
+            }`}
           >
             Confirmar envio
           </button>

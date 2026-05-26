@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
-import { HomeAssistantPowerButton } from "./components/HomeAssistantPowerButton";
 import { FileLibrary } from "./components/FileLibrary";
 import { PrinterConfigModal } from "./components/PrinterConfigModal";
 import { fallbackData } from "./data/fallbackData";
@@ -13,6 +12,7 @@ import {
   fetchAssignmentPreview,
   fetchBootstrap,
   importLibraryFile,
+  markPrinterReady,
   togglePrinterLight,
   updatePrinter,
   updatePrinterPower
@@ -70,6 +70,10 @@ function App() {
   };
 
   const handleOpenConfig = (printer) => {
+    if (printer.state === "printing") {
+      setActivityMessage(`${printer.name} esta imprimiendo. La configuracion esta bloqueada.`);
+      return;
+    }
     setConfigPrinter(printer);
   };
 
@@ -80,11 +84,24 @@ function App() {
   };
 
   const handleToggleLight = async (printer) => {
+    if (printer.state === "printing") {
+      setActivityMessage(`${printer.name} esta imprimiendo. La luz no se puede cambiar ahora.`);
+      return;
+    }
     await togglePrinterLight(printer.id);
     setActivityMessage(`Luz actualizada en ${printer.name}.`);
   };
 
+  const handleMarkReady = async (printer) => {
+    await markPrinterReady(printer.id);
+    setActivityMessage(`${printer.name} confirmada como lista para la siguiente impresion.`);
+  };
+
   const handlePowerAction = async (printer, action) => {
+    if (printer.state === "printing") {
+      setActivityMessage(`${printer.name} esta imprimiendo. El control de energia esta bloqueado.`);
+      return;
+    }
     await updatePrinterPower(printer.id, action);
     setActivityMessage(`${printer.name}: ${action}.`);
   };
@@ -128,10 +145,16 @@ function App() {
     const response = await dispatchLibraryFile(dispatchState.file.id, payload);
     if (response.mode === "assigned") {
       setActivityMessage(`Trabajo enviado a ${response.selectedPrinter.name}.`);
-    } else if (response.mode === "queued_manual") {
-      setActivityMessage(`Trabajo enviado a cola manual para ${response.selectedPrinter.name}.`);
+    } else if (response.mode === "assigned_manual") {
+      setActivityMessage(
+        response.reason
+          ? `Trabajo enviado manualmente a ${response.selectedPrinter.name}. Nota: ${response.reason}.`
+          : `Trabajo enviado manualmente a ${response.selectedPrinter.name}.`
+      );
+    } else if (response.mode === "blocked") {
+      setActivityMessage(response.message || "La impresora seleccionada no esta disponible.");
     } else {
-      setActivityMessage("No habia impresoras libres. Trabajo enviado a cola.");
+      setActivityMessage("No habia impresoras libres para este envio.");
     }
     setDispatchState({ file: null, preview: null });
   };
@@ -185,6 +208,7 @@ function App() {
             onOpenConfig={handleOpenConfig}
             onToggleLight={handleToggleLight}
             onPowerAction={handlePowerAction}
+            onMarkReady={handleMarkReady}
           />
         )}
 

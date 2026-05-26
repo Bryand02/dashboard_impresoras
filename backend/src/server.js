@@ -2,6 +2,7 @@ import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { app } from "./app.js";
 import { env } from "./config/env.js";
+import { homeAssistantService } from "./services/homeAssistantService.js";
 import { libraryService } from "./services/libraryService.js";
 import { moonrakerService } from "./services/moonrakerService.js";
 import { printerConfigService } from "./services/printerConfigService.js";
@@ -33,6 +34,7 @@ const syncAndBroadcast = async () => {
   isSyncing = true;
   try {
     simulationService.tick();
+    await homeAssistantService.syncPrintersPowerStates();
     await moonrakerService.syncLivePrinters();
     const payload = getPayload();
     wss.clients.forEach((client) => {

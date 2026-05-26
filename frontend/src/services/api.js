@@ -56,6 +56,13 @@ export const togglePrinterLight = async (printerId) => {
   return response.json();
 };
 
+export const markPrinterReady = async (printerId) => {
+  const response = await fetch(`${API_URL}/printers/${printerId}/ready`, {
+    method: "POST"
+  });
+  return response.json();
+};
+
 export const deletePrinter = async (printerId) => {
   const response = await fetch(`${API_URL}/printers/${printerId}`, {
     method: "DELETE"

@@ -48,3 +48,9 @@ printersRouter.post("/:id/light", async (req, res) => {
   const haResponse = await homeAssistantService.sendLightCommand(updated, action);
   return res.json({ printer: updated, homeAssistant: haResponse });
 });
+
+printersRouter.post("/:id/ready", (req, res) => {
+  const printer = printerConfigService.markReady(req.params.id);
+  if (!printer) return res.status(404).json({ message: "Printer not found" });
+  return res.json(printer);
+});

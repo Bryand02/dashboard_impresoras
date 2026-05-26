@@ -13,13 +13,17 @@ const cleanJobName = (filename = "") => {
 };
 
 const cleanProfile = (printer) => {
+  if (printer.state === "finished") return "Trabajo terminado";
+  if (printer.state === "ready") return "Lista para imprimir";
   const material = printer.telemetry.filamentType || printer.activeMaterial || "";
   return material ? `${material} en impresion` : "Impresion activa";
 };
 
-export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction }) {
+export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction, onMarkReady }) {
   const jobTitle = cleanJobName(printer.telemetry.currentFile);
   const isPoweredOff = printer.powerState !== "on";
+  const isPrinting = printer.state === "printing";
+  const canMarkReady = printer.state === "finished" && !isPoweredOff;
 
   return (
     <article
@@ -39,8 +43,13 @@ export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction
           <PrinterStatusBadge status={printer.state} />
           <button
             type="button"
+            disabled={isPrinting}
             onClick={onOpenConfig}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-200"
+            className={`rounded-xl border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+              isPrinting
+                ? "cursor-not-allowed border-white/10 bg-white/5 text-slate-500 opacity-50"
+                : "border-white/10 bg-white/5 text-slate-200"
+            }`}
           >
             Config
           </button>
@@ -49,15 +58,25 @@ export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction
 
       <div className="space-y-2">
         <CameraPreview printer={printer} />
+        {canMarkReady && (
+          <button
+            type="button"
+            onClick={onMarkReady}
+            className="w-full rounded-2xl border border-sky-300/30 bg-sky-400/10 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-sky-200"
+          >
+            Marcar lista
+          </button>
+        )}
         {printer.lightEnabled ? (
           <button
             type="button"
+            disabled={isPrinting}
             onClick={onToggleLight}
             className={`w-full rounded-2xl border px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] ${
               printer.lightState === "on"
                 ? "border-amber-300/40 bg-amber-400/15 text-amber-200"
                 : "border-white/10 bg-white/5 text-slate-200"
-            }`}
+            } ${isPrinting ? "cursor-not-allowed opacity-40" : ""}`}
           >
             Lampara {printer.lightState === "on" ? "encendida" : "apagada"}
           </button>
@@ -128,7 +147,7 @@ export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction
 
       <div className="mt-auto">
         {printer.powerEnabled ? (
-          <HomeAssistantPowerButton powerState={printer.powerState} onAction={onPowerAction} />
+          <HomeAssistantPowerButton powerState={printer.powerState} onAction={onPowerAction} disabled={isPrinting} />
         ) : (
           <button
             type="button"
