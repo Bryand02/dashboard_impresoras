@@ -1,7 +1,7 @@
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   if (typeof window !== "undefined") return `${window.location.origin}/api`;
-  return "http://localhost:4300/api";
+  return "http://localhost:8099/api";
 };
 
 const getWsUrl = () => {
@@ -10,7 +10,7 @@ const getWsUrl = () => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     return `${protocol}//${window.location.host}/ws`;
   }
-  return "ws://localhost:4300/ws";
+  return "ws://localhost:8099/ws";
 };
 
 const API_URL = getApiUrl();

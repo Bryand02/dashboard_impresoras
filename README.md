@@ -52,7 +52,7 @@ npm run build
 npm run start
 ```
 
-Luego abre `http://localhost:4300`.
+Luego abre `http://localhost:8099`.
 
 ## Despliegue en servidor
 
@@ -82,7 +82,7 @@ El backend sirve automaticamente el `frontend/dist`, asi que en produccion solo 
 Copia `.env.example` si necesitas parametrizar el servidor:
 
 ```bash
-PORT=4300
+PORT=8099
 CORS_ORIGIN=http://localhost:5173
 HOME_ASSISTANT_URL=
 HOME_ASSISTANT_TOKEN=
