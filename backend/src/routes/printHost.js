@@ -1,5 +1,7 @@
 import multer from "multer";
 import { Router } from "express";
+import fs from "fs";
+import path from "path";
 import { libraryService } from "../services/libraryService.js";
 import { printerAssignmentService } from "../services/printerAssignmentService.js";
 import { parseGcodeMetadata } from "../utils/gcodeParser.js";
@@ -22,6 +24,29 @@ const createImportedEntry = ({ filename, content, source = "orcaslicer", descrip
   });
 };
 
+const buildMoonrakerFileItem = (file, root = "gcodes") => {
+  const downloadPath = libraryService.getDownloadPath(file);
+  const size = downloadPath && fs.existsSync(downloadPath) ? fs.statSync(downloadPath).size : 0;
+  const compatibilityNames = file.compatibility?.join(",") || "";
+  return {
+    path: file.filename,
+    root,
+    modified: file.uploadedAt,
+    size,
+    permissions: "rw",
+    thumbnails: [],
+    slicer: file.profile || "OrcaSlicer",
+    material: file.material || "",
+    filament_total: file.weightGrams || 0,
+    estimated_time: (file.estimatedMinutes || 0) * 60,
+    print_start_time: null,
+    job_id: null,
+    dimensions: file.dimensions || { x: 0, y: 0, z: 0 },
+    source: file.source || "orcaslicer",
+    compatibility: compatibilityNames
+  };
+};
+
 const handleVirtualUpload = (sourceLabel) => (req, res) => {
   const uploadedFile = req.file;
   if (!uploadedFile) {
@@ -30,18 +55,24 @@ const handleVirtualUpload = (sourceLabel) => (req, res) => {
 
   const filename = uploadedFile.originalname || "upload.gcode";
   const content = uploadedFile.buffer.toString("utf8");
+  const root = req.body.root || "gcodes";
+  const requestedPrint = String(req.body.print || "").toLowerCase() === "true";
   const storageInfo = libraryService.saveSourceFile(filename, uploadedFile.buffer);
   const created = createImportedEntry({
     filename,
     content,
     source: sourceLabel,
     description: "Importado automaticamente desde OrcaSlicer al gestor central.",
-    storageInfo
-  });
+      storageInfo
+    });
 
-  return res.status(201).json({
-    done: true,
-    message: "Archivo recibido por Printer Hub y guardado en la biblioteca unificada.",
+  return res.status(200).json({
+    result: {
+      item: buildMoonrakerFileItem(created, root),
+      action: "create_file",
+      print_started: requestedPrint,
+      print_queued: requestedPrint
+    },
     file: {
       id: created.id,
       name: created.name,
@@ -51,25 +82,30 @@ const handleVirtualUpload = (sourceLabel) => (req, res) => {
       compatibility: created.compatibility,
       downloadUrl: `/api/library/${created.id}/download`
     },
-    files: {
-      local: {
-        name: created.filename,
-        path: created.filename,
-        origin: "local",
-        refs: {
-          resource: `/api/library/${created.id}`,
-          download: `/api/library/${created.id}/download`
-        }
-      }
-    },
-    result: {
-      id: created.id,
-      path: created.filename,
-      queuedForLibrary: true,
-      autoPrint: false
-    }
+    message: requestedPrint
+      ? "Archivo recibido por Printer Hub y agregado a la biblioteca para despacho posterior."
+      : "Archivo recibido por Printer Hub y guardado en la biblioteca unificada."
   });
 };
+
+const getFileFromQuery = (req) => {
+  const filename = req.query.filename || req.query.path;
+  if (!filename) return null;
+  return libraryService.getByFilename(path.basename(String(filename)));
+};
+
+const metadataFromFile = (file) => ({
+  size: file.weightGrams || 0,
+  modified: file.uploadedAt,
+  uuid: file.id,
+  slicer: file.profile || "OrcaSlicer",
+  object_height: file.dimensions?.z || 0,
+  estimated_time: (file.estimatedMinutes || 0) * 60,
+  filament_total: file.weightGrams || 0,
+  thumbnails: [],
+  print_start_time: null,
+  job_id: null
+});
 
 export const printHostRouter = Router();
 
@@ -78,7 +114,7 @@ printHostRouter.get("/api/version", (_req, res) => {
     api: "0.1",
     server: "Printer Hub",
     text: "Printer Hub virtual print host",
-    version: "0.2.0"
+    version: "0.2.1"
   });
 });
 
@@ -94,6 +130,45 @@ printHostRouter.get("/server/info", (_req, res) => {
       moonraker_version: "printer-hub-virtual-host",
       api_version: [1, 0, 0],
       api_version_string: "1.0.0"
+    }
+  });
+});
+
+printHostRouter.get("/server/files/list", (_req, res) => {
+  res.json({
+    result: libraryService.list().map((file) => buildMoonrakerFileItem(file))
+  });
+});
+
+printHostRouter.get("/server/files/metadata", (req, res) => {
+  const file = getFileFromQuery(req);
+  if (!file) {
+    return res.status(404).json({ error: { message: "Metadata not found", code: 404 } });
+  }
+  return res.json({
+    result: metadataFromFile(file)
+  });
+});
+
+printHostRouter.get("/server/files/thumbnails", (req, res) => {
+  const file = getFileFromQuery(req);
+  if (!file) {
+    return res.status(404).json({ error: { message: "Thumbnail not found", code: 404 } });
+  }
+  return res.json({
+    result: {
+      thumbnails: file.thumbnail?.startsWith("data:image")
+        ? [{ relative_path: "inline-thumbnail.png", width: 0, height: 0, size: 0 }]
+        : []
+    }
+  });
+});
+
+printHostRouter.post("/printer/print/start", (_req, res) => {
+  res.json({
+    result: {
+      accepted: true,
+      queuedForLibrary: true
     }
   });
 });

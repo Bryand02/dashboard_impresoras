@@ -106,6 +106,10 @@ class LibraryService {
     return this.files.find((file) => file.id === id) || null;
   }
 
+  getByFilename(filename) {
+    return this.files.find((file) => file.filename === filename) || null;
+  }
+
   getDownloadPath(file) {
     if (!file?.storagePath) return null;
     return path.resolve(path.resolve(__dirname, "../.."), file.storagePath);
