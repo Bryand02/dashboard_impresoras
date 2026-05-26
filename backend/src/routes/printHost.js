@@ -47,9 +47,38 @@ const buildMoonrakerFileItem = (file, root = "gcodes") => {
   };
 };
 
+const metadataFromFile = (file) => ({
+  size: file.weightGrams || 0,
+  modified: file.uploadedAt,
+  uuid: file.id,
+  slicer: file.profile || "OrcaSlicer",
+  object_height: file.dimensions?.z || 0,
+  estimated_time: (file.estimatedMinutes || 0) * 60,
+  filament_total: file.weightGrams || 0,
+  thumbnails: [],
+  print_start_time: null,
+  job_id: null
+});
+
+const getFileFromQuery = (req) => {
+  const filename = req.query.filename || req.query.path;
+  if (!filename) return null;
+  return libraryService.getByFilename(path.basename(String(filename)));
+};
+
+const getUploadedFile = (req) => {
+  if (req.file) return req.file;
+  if (Array.isArray(req.files) && req.files.length > 0) return req.files[0];
+  return null;
+};
+
 const handleVirtualUpload = (sourceLabel) => (req, res) => {
-  const uploadedFile = req.file;
+  const uploadedFile = getUploadedFile(req);
   if (!uploadedFile) {
+    const fileFieldNames = Array.isArray(req.files) ? req.files.map((file) => file.fieldname).join(",") : "none";
+    console.warn(
+      `[print-host] upload failed: request without file field bodyKeys=${Object.keys(req.body || {}).join(",")} fileFields=${fileFieldNames}`
+    );
     return res.status(400).json({ error: "No se encontro un archivo G-code en la solicitud." });
   }
 
@@ -57,14 +86,18 @@ const handleVirtualUpload = (sourceLabel) => (req, res) => {
   const content = uploadedFile.buffer.toString("utf8");
   const root = req.body.root || "gcodes";
   const requestedPrint = String(req.body.print || "").toLowerCase() === "true";
+  console.log(
+    `[print-host] upload received file="${filename}" field=${uploadedFile.fieldname} size=${uploadedFile.size} root=${root} print=${requestedPrint}`
+  );
+
   const storageInfo = libraryService.saveSourceFile(filename, uploadedFile.buffer);
   const created = createImportedEntry({
     filename,
     content,
     source: sourceLabel,
     description: "Importado automaticamente desde OrcaSlicer al gestor central.",
-      storageInfo
-    });
+    storageInfo
+  });
 
   return res.status(200).json({
     result: {
@@ -88,33 +121,21 @@ const handleVirtualUpload = (sourceLabel) => (req, res) => {
   });
 };
 
-const getFileFromQuery = (req) => {
-  const filename = req.query.filename || req.query.path;
-  if (!filename) return null;
-  return libraryService.getByFilename(path.basename(String(filename)));
-};
-
-const metadataFromFile = (file) => ({
-  size: file.weightGrams || 0,
-  modified: file.uploadedAt,
-  uuid: file.id,
-  slicer: file.profile || "OrcaSlicer",
-  object_height: file.dimensions?.z || 0,
-  estimated_time: (file.estimatedMinutes || 0) * 60,
-  filament_total: file.weightGrams || 0,
-  thumbnails: [],
-  print_start_time: null,
-  job_id: null
-});
-
 export const printHostRouter = Router();
+
+printHostRouter.use((req, _res, next) => {
+  console.log(
+    `[print-host] ${req.method} ${req.originalUrl} from=${req.ip || "unknown"} ua="${req.get("user-agent") || "unknown"}"`
+  );
+  next();
+});
 
 printHostRouter.get("/api/version", (_req, res) => {
   res.json({
     api: "0.1",
     server: "Printer Hub",
     text: "Printer Hub virtual print host",
-    version: "0.2.1"
+    version: "0.2.2"
   });
 });
 
@@ -173,5 +194,5 @@ printHostRouter.post("/printer/print/start", (_req, res) => {
   });
 });
 
-printHostRouter.post("/api/files/local", upload.single("file"), handleVirtualUpload("orcaslicer"));
-printHostRouter.post("/server/files/upload", upload.single("file"), handleVirtualUpload("orcaslicer"));
+printHostRouter.post("/api/files/local", upload.any(), handleVirtualUpload("orcaslicer"));
+printHostRouter.post("/server/files/upload", upload.any(), handleVirtualUpload("orcaslicer"));
