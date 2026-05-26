@@ -133,9 +133,12 @@ printHostRouter.use((req, _res, next) => {
 printHostRouter.get("/api/version", (_req, res) => {
   res.json({
     api: "0.1",
-    server: "Printer Hub",
-    text: "Printer Hub virtual print host",
-    version: "0.2.2"
+    server: "OctoPrint",
+    text: "OctoPrint 1.10.3",
+    version: "1.10.3",
+    capabilities: {
+      "upload-by-put": false
+    }
   });
 });
 
