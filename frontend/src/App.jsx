@@ -122,12 +122,11 @@ function App() {
   const handleImportLibraryFile = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const content = await file.text();
-    const imported = await importLibraryFile({
-      filename: file.name,
-      content
-    });
-    setActivityMessage(`Archivo ${imported.name} importado automaticamente.`);
+    const payload = new FormData();
+    payload.append("file", file);
+    const imported = await importLibraryFile(payload);
+    const importedFile = imported.file || imported;
+    setActivityMessage(`Archivo ${importedFile.name} importado automaticamente.`);
     event.target.value = "";
   };
 
@@ -223,6 +222,7 @@ function App() {
             />
             <FileLibrary
               files={filteredLibrary}
+              printers={data.printers}
               query={libraryQuery}
               onQueryChange={setLibraryQuery}
               onOpenUpload={() => document.getElementById("library-file-input")?.click()}

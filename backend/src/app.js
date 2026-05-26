@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
 import { libraryRouter } from "./routes/library.js";
+import { printHostRouter } from "./routes/printHost.js";
 import { printersRouter } from "./routes/printers.js";
 import { queueRouter } from "./routes/queue.js";
 import { systemRouter } from "./routes/system.js";
@@ -20,6 +21,7 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", mode: "mock" });
 });
 
+app.use(printHostRouter);
 app.use("/api/printers", printersRouter);
 app.use("/api/library", libraryRouter);
 app.use("/api/queue", queueRouter);

@@ -9,6 +9,7 @@ Centro de control industrial para multiples impresoras 3D con Klipper, Moonraker
 - Control visual de energia y luz por impresora
 - Biblioteca unificada de G-codes
 - Importacion local de `.gcode` con extraccion automatica de miniatura, tiempo y material
+- Host virtual compatible con OrcaSlicer para enviar `Print` directo a la biblioteca
 - Sugerencia de impresora libre antes de despachar una impresion
 
 ## Stack
@@ -77,6 +78,24 @@ npm run start
 
 El backend sirve automaticamente el `frontend/dist`, asi que en produccion solo necesitas el proceso del backend.
 
+## OrcaSlicer como host virtual
+
+Puedes configurar OrcaSlicer para que el boton `Print` envie el archivo al gestor y no a una impresora final.
+
+- `Host Type`: `Octo/Klipper`
+- `Hostname, IP or URL`: `https://gestor3d.platia.com.co`
+- `Device UI`: `https://gestor3d.platia.com.co`
+- `API Key / Password`: dejar vacio
+
+El archivo se recibe en el gestor, se guarda en `Biblioteca`, se extraen miniatura/material/tiempo y luego decides a que impresora mandarlo.
+
+Compatibilidad implementada:
+
+- `POST /server/files/upload`
+- `POST /api/files/local`
+- `GET /api/version`
+- `GET /server/info`
+
 ## Variables de entorno
 
 Copia `.env.example` si necesitas parametrizar el servidor:
@@ -90,10 +109,23 @@ HOME_ASSISTANT_TOKEN=
 
 ## Docker
 
-Para entorno de desarrollo:
+Para levantar la app con Docker:
 
 ```bash
 docker compose up --build
+```
+
+1. Crea un archivo `.env` en la raiz del proyecto:
+
+```bash
+HOME_ASSISTANT_URL=http://192.168.1.71:8123
+HOME_ASSISTANT_TOKEN=tu_token_largo
+```
+
+2. Levanta el contenedor:
+
+```bash
+docker compose up -d --build
 ```
 
 ## Integraciones que aun pueden llevarse a real

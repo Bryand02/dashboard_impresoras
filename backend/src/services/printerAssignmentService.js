@@ -3,11 +3,8 @@ import { queueService } from "./queueService.js";
 import { normalizeMaterial } from "../utils/gcodeParser.js";
 
 class PrinterAssignmentService {
-  getAvailabilityReason(printer, file) {
+  getPhysicalCompatibilityReason(printer, file) {
     if (!printer) return "Impresora no encontrada";
-    if (printer.powerState !== "on") return "Apagada";
-    if (printer.state === "finished") return "Pendiente confirmar lista";
-    if (!["online", "ready"].includes(printer.state)) return `Estado actual: ${printer.state}`;
     const printerMaterials = (printer.materials || []).map(normalizeMaterial);
     const fileMaterial = normalizeMaterial(file.material);
     if (fileMaterial && !printerMaterials.includes(fileMaterial)) return `Material no compatible: ${file.material}`;
@@ -18,7 +15,17 @@ class PrinterAssignmentService {
     ) {
       return "Volumen insuficiente";
     }
-    return "Disponible";
+    return "Compatible";
+  }
+
+  getAvailabilityReason(printer, file) {
+    if (!printer) return "Impresora no encontrada";
+    if (printer.powerState !== "on") return "Apagada";
+    if (printer.state === "finished") return "Pendiente confirmar lista";
+    if (!["online", "ready"].includes(printer.state)) return `Estado actual: ${printer.state}`;
+    return this.getPhysicalCompatibilityReason(printer, file) === "Compatible"
+      ? "Disponible"
+      : this.getPhysicalCompatibilityReason(printer, file);
   }
 
   canSelectManually(printer) {
@@ -31,6 +38,13 @@ class PrinterAssignmentService {
     return printerConfigService.list().filter((printer) => {
       return this.getAvailabilityReason(printer, file) === "Disponible";
     });
+  }
+
+  getCompatiblePrinterIds(file) {
+    return printerConfigService
+      .list()
+      .filter((printer) => this.getPhysicalCompatibilityReason(printer, file) === "Compatible")
+      .map((printer) => printer.id);
   }
 
   rankPrinters(printers, file) {

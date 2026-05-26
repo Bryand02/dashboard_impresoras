@@ -9,3 +9,5 @@ runtime-logs/
 .DS_Store
 *.log
 backend/data/
+backend/storage/*
+!backend/storage/.gitkeep

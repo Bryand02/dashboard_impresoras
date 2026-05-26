@@ -5,7 +5,8 @@ const formatMinutes = (minutes) => {
   return hours ? `${hours}h ${rest}m` : `${rest}m`;
 };
 
-export function FileLibrary({ files, query, onQueryChange, onOpenUpload, onDelete, onOpenDispatch }) {
+export function FileLibrary({ files, printers = [], query, onQueryChange, onOpenUpload, onDelete, onOpenDispatch }) {
+  const printerNameMap = new Map(printers.map((printer) => [printer.id, printer.name]));
   return (
     <section className="space-y-4">
       <header className="glass rounded-[24px] border border-white/10 p-4 shadow-glow">
@@ -62,7 +63,7 @@ export function FileLibrary({ files, query, onQueryChange, onOpenUpload, onDelet
               <div className="flex flex-wrap gap-2">
                 {file.compatibility.map((machine) => (
                   <span key={machine} className="rounded-full border border-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-300">
-                    {machine}
+                    {printerNameMap.get(machine) || machine}
                   </span>
                 ))}
               </div>

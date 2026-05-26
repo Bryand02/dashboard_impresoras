@@ -80,6 +80,13 @@ export const createLibraryFile = async (payload) => {
 };
 
 export const importLibraryFile = async (payload) => {
+  if (payload instanceof FormData) {
+    const response = await fetch(`${API_URL}/files/local`, {
+      method: "POST",
+      body: payload
+    });
+    return response.json();
+  }
   const response = await fetch(`${API_URL}/library/import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
