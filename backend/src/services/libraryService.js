@@ -8,33 +8,106 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const storageDir = path.resolve(__dirname, "../../storage/library");
 const metadataPath = path.join(storageDir, "library.json");
+const projectRoot = path.resolve(__dirname, "../../..");
+const foldersBaseDir = path.join(projectRoot, "base_datos_Archivos");
 
 const ensureStorage = () => {
   fs.mkdirSync(storageDir, { recursive: true });
+  fs.mkdirSync(foldersBaseDir, { recursive: true });
 };
 
-const loadPersistedFiles = () => {
+const defaultFolders = ["General", "Inbox", "Orca Imports"];
+
+const normalizeFolderPath = (value) =>
+  String(value || "")
+    .replace(/\\/g, "/")
+    .replace(/\.\./g, "")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join("/");
+
+const getFolderAbsolutePath = (folder = "") => {
+  const normalized = normalizeFolderPath(folder);
+  return normalized ? path.join(foldersBaseDir, normalized) : foldersBaseDir;
+};
+
+const collectFoldersFromDisk = (dir = foldersBaseDir, prefix = "") => {
+  if (!fs.existsSync(dir)) return [];
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory());
+
+  const folders = [];
+  entries.forEach((entry) => {
+    const currentPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    folders.push(currentPath);
+    folders.push(...collectFoldersFromDisk(path.join(dir, entry.name), currentPath));
+  });
+  return folders;
+};
+
+const loadPersistedState = () => {
   ensureStorage();
-  if (!fs.existsSync(metadataPath)) return structuredClone(libraryFiles);
+  if (!fs.existsSync(metadataPath)) {
+    return {
+      files: structuredClone(libraryFiles).map((file) => ({ folder: "General", ...file })),
+      folders: [...defaultFolders]
+    };
+  }
   try {
-    return JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+    const parsed = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+    const diskFolders = collectFoldersFromDisk();
+    const mergedFolders = Array.from(
+      new Set([
+        ...defaultFolders,
+        ...(Array.isArray(parsed.folders) ? parsed.folders : []),
+        ...diskFolders
+      ])
+    );
+    if (Array.isArray(parsed)) {
+      return {
+        files: parsed.map((file) => ({ folder: "General", ...file })),
+        folders: mergedFolders
+      };
+    }
+    return {
+      files: Array.isArray(parsed.files) ? parsed.files.map((file) => ({ folder: "General", ...file })) : [],
+      folders: mergedFolders
+    };
   } catch {
-    return structuredClone(libraryFiles);
+    return {
+      files: structuredClone(libraryFiles).map((file) => ({ folder: "General", ...file })),
+      folders: [...defaultFolders]
+    };
   }
 };
 
 class LibraryService {
   constructor() {
-    this.files = loadPersistedFiles();
+    const state = loadPersistedState();
+    this.files = state.files;
+    this.folders = state.folders;
+    this.folders.forEach((folder) => {
+      fs.mkdirSync(getFolderAbsolutePath(folder), { recursive: true });
+    });
   }
 
   list() {
     return [...this.files].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
   }
 
+  listFolders() {
+    return [...this.folders].sort((a, b) => a.localeCompare(b));
+  }
+
   persist() {
     ensureStorage();
-    fs.writeFileSync(metadataPath, JSON.stringify(this.files, null, 2), "utf8");
+    fs.writeFileSync(
+      metadataPath,
+      JSON.stringify({ folders: this.folders, files: this.files }, null, 2),
+      "utf8"
+    );
   }
 
   ensureUniqueId(baseId) {
@@ -47,31 +120,37 @@ class LibraryService {
     return candidate;
   }
 
-  saveSourceFile(filename, contentOrBuffer) {
+  saveSourceFile(filename, contentOrBuffer, folder = "General") {
     ensureStorage();
     const ext = path.extname(filename) || ".gcode";
     const base = slugify(path.basename(filename, ext) || `gcode-${Date.now()}`);
     const storedName = `${Date.now()}-${base}${ext}`;
-    const absolutePath = path.join(storageDir, storedName);
+    const normalizedFolder = this.ensureFolder(folder) || "General";
+    const folderPath = getFolderAbsolutePath(normalizedFolder);
+    fs.mkdirSync(folderPath, { recursive: true });
+    const absolutePath = path.join(folderPath, storedName);
     fs.writeFileSync(absolutePath, contentOrBuffer);
     return {
       storedName,
-      storagePath: path.relative(path.resolve(__dirname, "../.."), absolutePath).replace(/\\/g, "/"),
+      storagePath: path.relative(projectRoot, absolutePath).replace(/\\/g, "/"),
       absolutePath
     };
   }
 
   create(payload) {
     const id = this.ensureUniqueId(slugify(payload.name || payload.filename || `file-${Date.now()}`));
+    const folder = normalizeFolderPath(payload.folder || "General") || "General";
+    this.ensureFolder(folder);
     const file = {
       id,
       printCount: 0,
       uploadedAt: new Date().toISOString(),
-      thumbnail: payload.thumbnail || "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80",
+      thumbnail: payload.thumbnail || "",
       description: payload.description || "Archivo agregado manualmente.",
       compatibility: payload.compatibility || [],
       dimensions: payload.dimensions || { x: 0, y: 0, z: 0 },
       source: payload.source || "manual",
+      folder,
       ...payload,
       id
     };
@@ -83,6 +162,9 @@ class LibraryService {
   update(id, payload) {
     const index = this.files.findIndex((file) => file.id === id);
     if (index === -1) return null;
+    if (payload.folder) {
+      payload.folder = this.ensureFolder(payload.folder);
+    }
     this.files[index] = { ...this.files[index], ...payload };
     this.persist();
     return this.files[index];
@@ -112,7 +194,51 @@ class LibraryService {
 
   getDownloadPath(file) {
     if (!file?.storagePath) return null;
-    return path.resolve(path.resolve(__dirname, "../.."), file.storagePath);
+    return path.resolve(projectRoot, file.storagePath);
+  }
+
+  ensureFolder(name) {
+    const folder = normalizeFolderPath(name);
+    if (!folder) return null;
+    if (!this.folders.includes(folder)) {
+      this.folders.push(folder);
+    }
+    fs.mkdirSync(getFolderAbsolutePath(folder), { recursive: true });
+    this.persist();
+    return folder;
+  }
+
+  deleteFolder(name) {
+    const folder = normalizeFolderPath(name);
+    if (!folder) {
+      return { success: false, reason: "protected" };
+    }
+
+    const hasFiles = this.files.some((file) => {
+      const fileFolder = normalizeFolderPath(file.folder || "General");
+      return fileFolder === folder || fileFolder.startsWith(`${folder}/`);
+    });
+    if (hasFiles) {
+      return { success: false, reason: "has-files" };
+    }
+
+    const hasChildren = this.folders.some((current) => current !== folder && current.startsWith(`${folder}/`));
+    if (hasChildren) {
+      return { success: false, reason: "has-children" };
+    }
+
+    const folderPath = getFolderAbsolutePath(folder);
+    if (fs.existsSync(folderPath)) {
+      const entries = fs.readdirSync(folderPath);
+      if (entries.length > 0) {
+        return { success: false, reason: "has-files" };
+      }
+      fs.rmdirSync(folderPath);
+    }
+
+    this.folders = this.folders.filter((current) => current !== folder);
+    this.persist();
+    return { success: true };
   }
 }
 

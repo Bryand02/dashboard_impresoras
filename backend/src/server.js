@@ -18,6 +18,7 @@ const getPayload = () =>
     payload: {
       printers: printerConfigService.list(),
       library: libraryService.list(),
+      libraryFolders: libraryService.listFolders(),
       queue: queueService.list(),
       lastUpdatedAt: new Date().toISOString()
     }

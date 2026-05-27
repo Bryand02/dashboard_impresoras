@@ -10,6 +10,7 @@ systemRouter.get("/bootstrap", (_req, res) => {
   res.json({
     printers: printerConfigService.list(),
     library: libraryService.list(),
+    libraryFolders: libraryService.listFolders(),
     queue: queueService.list(),
     discovery: printerDiscoveryService.discover()
   });

@@ -126,7 +126,7 @@ export const parseGcodeMetadata = ({ filename, content }) => {
     profile,
     description: "Importado automaticamente desde archivo local.",
     compatibility: [],
-    thumbnail: parseThumbnail(content) || "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80",
+    thumbnail: parseThumbnail(content) || "",
     dimensions: {
       x: dimensionsX,
       y: dimensionsY,

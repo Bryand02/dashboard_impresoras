@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
 import { FloatingCameraWindow } from "./components/FloatingCameraWindow";
@@ -8,7 +8,9 @@ import { fallbackData } from "./data/fallbackData";
 import { DashboardSection } from "./sections/DashboardSection";
 import {
   createPrinter,
+  createLibraryFolder,
   createSocket,
+  deleteLibraryFolder,
   deleteLibraryFile,
   dispatchLibraryFile,
   fetchAssignmentPreview,
@@ -26,33 +28,42 @@ function App() {
   const [configPrinter, setConfigPrinter] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
   const [libraryQuery, setLibraryQuery] = useState("");
+  const [activeLibraryFolder, setActiveLibraryFolder] = useState("General");
   const [dispatchState, setDispatchState] = useState({ file: null, preview: null });
   const [activityMessage, setActivityMessage] = useState("");
   const [floatingCamera, setFloatingCamera] = useState(null);
 
+  const reloadData = useCallback(async () => {
+    const bootstrap = await fetchBootstrap();
+    setData({
+      printers: bootstrap.printers,
+      library: bootstrap.library,
+      libraryFolders: bootstrap.libraryFolders || fallbackData.libraryFolders,
+      queue: bootstrap.queue
+    });
+  }, []);
+
   useEffect(() => {
     let socket;
     document.title = `Printer Hub v${APP_VERSION}`;
-    fetchBootstrap()
-      .then((bootstrap) => {
-        setData({
-          printers: bootstrap.printers,
-          library: bootstrap.library,
-          queue: bootstrap.queue
-        });
-      })
+    reloadData()
       .catch(() => {
         setData(fallbackData);
       });
 
     socket = createSocket((message) => {
       if (message.type === "snapshot") {
-        setData(message.payload);
+        setData({
+          printers: message.payload.printers,
+          library: message.payload.library,
+          libraryFolders: message.payload.libraryFolders || fallbackData.libraryFolders,
+          queue: message.payload.queue
+        });
       }
     });
 
     return () => socket?.close();
-  }, []);
+  }, [reloadData]);
 
   const handleAddPrinter = async () => {
     const name = window.prompt("Nombre de la impresora");
@@ -71,6 +82,7 @@ function App() {
       volume: { x: 235, y: 235, z: 250 },
       image: ""
     });
+    await reloadData();
     setActivityMessage(`Impresora ${name} agregada.`);
   };
 
@@ -84,6 +96,7 @@ function App() {
 
   const handleSaveConfig = async (printer, form) => {
     await updatePrinter(printer.id, form);
+    await reloadData();
     setConfigPrinter(null);
     setActivityMessage(`Configuracion actualizada para ${printer.name}.`);
   };
@@ -94,11 +107,13 @@ function App() {
       return;
     }
     await togglePrinterLight(printer.id);
+    await reloadData();
     setActivityMessage(`Luz actualizada en ${printer.name}.`);
   };
 
   const handleMarkReady = async (printer) => {
     await markPrinterReady(printer.id);
+    await reloadData();
     setActivityMessage(`${printer.name} confirmada como lista para la siguiente impresion.`);
   };
 
@@ -108,6 +123,7 @@ function App() {
       return;
     }
     await updatePrinterPower(printer.id, action);
+    await reloadData();
     setActivityMessage(
       action === "on"
         ? `${printer.name} encendida. Si sigue offline, puedes reiniciar Klipper o Moonraker.`
@@ -117,11 +133,37 @@ function App() {
 
   const handleRestartService = async (printer, target) => {
     const response = await restartPrinterService(printer.id, target);
+    await reloadData();
     setActivityMessage(
-      response.message
-        ? response.message
-        : `${target === "moonraker" ? "Moonraker" : "Klipper"} reiniciado en ${printer.name}.`
+        response.message
+          ? response.message
+          : `${target === "moonraker" ? "Moonraker" : "Klipper"} reiniciado en ${printer.name}.`
     );
+  };
+
+  const handleCreateLibraryFolder = async (explicitParent = null) => {
+    const name = window.prompt("Nombre de la carpeta");
+    if (!name) return;
+    const parent = explicitParent ?? (activeLibraryFolder === "Todas" ? "" : activeLibraryFolder);
+    const response = await createLibraryFolder(name, parent);
+    await reloadData();
+    setActiveLibraryFolder(response.name || name);
+    setActivityMessage(`Carpeta ${response.name || name} creada.`);
+  };
+
+  const handleDeleteLibraryFolder = async (folderName = activeLibraryFolder) => {
+    if (!folderName || folderName === "Todas") return;
+    const confirmed = window.confirm(`Eliminar carpeta ${folderName}? Solo se podra borrar si esta vacia.`);
+    if (!confirmed) return;
+    const response = await deleteLibraryFolder(folderName);
+    if (response.success) {
+      await reloadData();
+      setActiveLibraryFolder("Todas");
+      setActivityMessage(`Carpeta ${folderName} eliminada.`);
+      return;
+    }
+    await reloadData();
+    setActivityMessage(response.message || "No se pudo eliminar la carpeta.");
   };
 
   const summary = useMemo(() => {
@@ -131,18 +173,26 @@ function App() {
 
   const filteredLibrary = useMemo(() => {
     const term = libraryQuery.toLowerCase().trim();
-    if (!term) return data.library;
-    return data.library.filter((file) =>
+    const byFolder = activeLibraryFolder === "Todas"
+      ? data.library
+      : data.library.filter((file) => {
+        const folder = file.folder || "General";
+        return folder === activeLibraryFolder || folder.startsWith(`${activeLibraryFolder}/`);
+      });
+    if (!term) return byFolder;
+    return byFolder.filter((file) =>
       [file.name, file.material, file.filename, file.description].join(" ").toLowerCase().includes(term)
     );
-  }, [data.library, libraryQuery]);
+  }, [activeLibraryFolder, data.library, libraryQuery]);
 
   const handleImportLibraryFile = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const payload = new FormData();
     payload.append("file", file);
+    payload.append("folder", activeLibraryFolder === "Todas" ? "General" : activeLibraryFolder);
     const imported = await importLibraryFile(payload);
+    await reloadData();
     const importedFile = imported.file || imported;
     setActivityMessage(`Archivo ${importedFile.name} importado automaticamente.`);
     event.target.value = "";
@@ -150,6 +200,7 @@ function App() {
 
   const handleDeleteLibraryFile = async (fileId) => {
     await deleteLibraryFile(fileId);
+    await reloadData();
     setActivityMessage(`Archivo ${fileId} eliminado.`);
   };
 
@@ -160,6 +211,7 @@ function App() {
 
   const handleConfirmDispatch = async (payload) => {
     const response = await dispatchLibraryFile(dispatchState.file.id, payload);
+    await reloadData();
     if (response.mode === "assigned") {
       setActivityMessage(`Trabajo enviado a ${response.selectedPrinter.name}.`);
     } else if (response.mode === "assigned_manual") {
@@ -242,7 +294,7 @@ function App() {
 
         {activeView === "library" && (
           <>
-            <input
+              <input
               id="library-file-input"
               type="file"
               accept=".gcode,.gc,.txt"
@@ -251,8 +303,14 @@ function App() {
             />
             <FileLibrary
               files={filteredLibrary}
+              allFiles={data.library}
+              folders={["Todas", ...(data.libraryFolders || fallbackData.libraryFolders)]}
               printers={data.printers}
               query={libraryQuery}
+              activeFolder={activeLibraryFolder}
+              onFolderChange={setActiveLibraryFolder}
+              onCreateFolder={handleCreateLibraryFolder}
+              onDeleteFolder={handleDeleteLibraryFolder}
               onQueryChange={setLibraryQuery}
               onOpenUpload={() => document.getElementById("library-file-input")?.click()}
               onDelete={handleDeleteLibraryFile}

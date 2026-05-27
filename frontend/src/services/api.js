@@ -104,6 +104,24 @@ export const importLibraryFile = async (payload) => {
   return response.json();
 };
 
+export const createLibraryFolder = async (name, parent = "") => {
+  const response = await fetch(`${API_URL}/library/folders`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, parent })
+  });
+  return response.json();
+};
+
+export const deleteLibraryFolder = async (name) => {
+  const response = await fetch(`${API_URL}/library/folders`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  return response.json();
+};
+
 export const updateLibraryFile = async (fileId, payload) => {
   const response = await fetch(`${API_URL}/library/${fileId}`, {
     method: "PUT",

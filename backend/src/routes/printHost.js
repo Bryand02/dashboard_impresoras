@@ -19,6 +19,7 @@ const createImportedEntry = ({ filename, content, source = "orcaslicer", descrip
     ...metadata,
     source,
     description: description || metadata.description,
+    folder: source === "orcaslicer" ? "Orca Imports" : "General",
     compatibility: printerAssignmentService.getCompatiblePrinterIds(metadata),
     storagePath: storageInfo?.storagePath || null
   });
@@ -90,7 +91,8 @@ const handleVirtualUpload = (sourceLabel) => (req, res) => {
     `[print-host] upload received file="${filename}" field=${uploadedFile.fieldname} size=${uploadedFile.size} root=${root} print=${requestedPrint}`
   );
 
-  const storageInfo = libraryService.saveSourceFile(filename, uploadedFile.buffer);
+  const targetFolder = sourceLabel === "orcaslicer" ? "Orca Imports" : "General";
+  const storageInfo = libraryService.saveSourceFile(filename, uploadedFile.buffer, targetFolder);
   const created = createImportedEntry({
     filename,
     content,
