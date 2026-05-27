@@ -8,8 +8,7 @@ const getGo2RtcSource = (cameraUrl) => {
     const src = parsed.searchParams.get("src");
     if (!src) return null;
     return {
-      streamPageUrl: cameraUrl,
-      videoUrl: `${parsed.origin}/api/stream.mp4?src=${encodeURIComponent(src)}`
+      webRtcUrl: `${parsed.origin}/webrtc.html?src=${encodeURIComponent(src)}&media=video`
     };
   } catch {
     return null;
@@ -42,11 +41,9 @@ function FloatingIcon() {
 export function CameraPreview({ printer, onOpenFloating }) {
   const cameraUrl = printer.cameraUrl || "";
   const frameRef = useRef(null);
-  const videoRef = useRef(null);
-  const [videoFailed, setVideoFailed] = useState(false);
-
+  const [embedFailed, setEmbedFailed] = useState(false);
   const go2RtcSource = useMemo(() => (isWebUrl(cameraUrl) ? getGo2RtcSource(cameraUrl) : null), [cameraUrl]);
-  const showVideo = Boolean(go2RtcSource?.videoUrl) && !videoFailed;
+  const showWebRtc = Boolean(go2RtcSource?.webRtcUrl) && !embedFailed;
 
   const handleFullscreen = async () => {
     if (!frameRef.current?.requestFullscreen) return;
@@ -56,17 +53,17 @@ export function CameraPreview({ printer, onOpenFloating }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/65">
       <div ref={frameRef} className="relative h-48 overflow-hidden bg-black">
-        {showVideo ? (
-          <video
-            ref={videoRef}
-            src={go2RtcSource.videoUrl}
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            playsInline
-            controls={false}
-            disablePictureInPicture={false}
-            onError={() => setVideoFailed(true)}
+        {showWebRtc ? (
+          <iframe
+            src={go2RtcSource.webRtcUrl}
+            title={`Camara ${printer.name}`}
+            className="h-full w-full border-0 bg-black"
+            style={{ clipPath: "inset(0 0 54px 0)" }}
+            loading="lazy"
+            allow="autoplay; fullscreen"
+            referrerPolicy="no-referrer"
+            scrolling="no"
+            onError={() => setEmbedFailed(true)}
           />
         ) : isWebUrl(cameraUrl) ? (
           <iframe

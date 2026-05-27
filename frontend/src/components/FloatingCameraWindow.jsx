@@ -8,7 +8,7 @@ const getGo2RtcSource = (cameraUrl) => {
     const src = parsed.searchParams.get("src");
     if (!src) return null;
     return {
-      videoUrl: `${parsed.origin}/api/stream.mp4?src=${encodeURIComponent(src)}`
+      webRtcUrl: `${parsed.origin}/webrtc.html?src=${encodeURIComponent(src)}&media=video`
     };
   } catch {
     return null;
@@ -16,10 +16,10 @@ const getGo2RtcSource = (cameraUrl) => {
 };
 
 export function FloatingCameraWindow({ printer, onClose }) {
-  const [videoFailed, setVideoFailed] = useState(false);
+  const [embedFailed, setEmbedFailed] = useState(false);
   const cameraUrl = printer.cameraUrl || "";
   const go2RtcSource = useMemo(() => getGo2RtcSource(cameraUrl), [cameraUrl]);
-  const showVideo = isWebUrl(cameraUrl) && Boolean(go2RtcSource?.videoUrl) && !videoFailed;
+  const showWebRtc = isWebUrl(cameraUrl) && Boolean(go2RtcSource?.webRtcUrl) && !embedFailed;
 
   return (
     <div className="fixed bottom-5 right-5 z-[80] overflow-hidden rounded-[22px] border border-white/15 bg-black shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
@@ -38,16 +38,16 @@ export function FloatingCameraWindow({ printer, onClose }) {
       </div>
 
       <div className="h-[220px] w-[360px] overflow-hidden bg-black">
-        {showVideo ? (
-          <video
-            src={go2RtcSource.videoUrl}
-            className="h-full w-full object-cover"
-            autoPlay
-            muted
-            playsInline
-            controls={false}
-            disablePictureInPicture
-            onError={() => setVideoFailed(true)}
+        {showWebRtc ? (
+          <iframe
+            src={go2RtcSource.webRtcUrl}
+            title={`Mini camara ${printer.name}`}
+            className="h-full w-full border-0 bg-black"
+            style={{ clipPath: "inset(0 0 54px 0)" }}
+            allow="autoplay; fullscreen"
+            referrerPolicy="no-referrer"
+            scrolling="no"
+            onError={() => setEmbedFailed(true)}
           />
         ) : isWebUrl(cameraUrl) ? (
           <iframe
