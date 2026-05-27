@@ -7,6 +7,10 @@ notificationsRouter.get("/config", (_req, res) => {
   res.json(notificationService.getPublicConfig());
 });
 
+notificationsRouter.get("/status", (_req, res) => {
+  res.json(notificationService.getStatus());
+});
+
 notificationsRouter.post("/subscribe", (req, res) => {
   try {
     const result = notificationService.subscribe(req.body);

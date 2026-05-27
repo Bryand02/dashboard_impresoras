@@ -28,6 +28,12 @@ export const fetchNotificationConfig = async () => {
   return response.json();
 };
 
+export const fetchNotificationStatus = async () => {
+  const response = await fetch(`${API_URL}/notifications/status`);
+  if (!response.ok) throw new Error("No fue posible consultar el estado de notificaciones");
+  return response.json();
+};
+
 export const subscribeNotifications = async (payload) => {
   const response = await fetch(`${API_URL}/notifications/subscribe`, {
     method: "POST",

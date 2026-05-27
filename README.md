@@ -150,7 +150,7 @@ PORT=8099
 CORS_ORIGIN=http://localhost:5173
 HOME_ASSISTANT_URL=
 HOME_ASSISTANT_TOKEN=
-VAPID_SUBJECT=mailto:printerhub@local
+VAPID_SUBJECT=https://gestor3d.platia.com.co
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 ```

@@ -15,6 +15,7 @@ import {
   deleteLibraryFile,
   dispatchLibraryFile,
   fetchNotificationConfig,
+  fetchNotificationStatus,
   fetchAssignmentPreview,
   fetchBootstrap,
   importLibraryFile,
@@ -301,7 +302,12 @@ function App() {
     try {
       setNotificationState((current) => ({ ...current, busy: true }));
       await sendTestNotification();
-      setActivityMessage("Notificacion de prueba enviada.");
+      const status = await fetchNotificationStatus();
+      if (status.lastReport?.sent > 0) {
+        setActivityMessage(`Notificacion de prueba enviada a ${status.lastReport.sent} dispositivo(s).`);
+      } else {
+        setActivityMessage(status.lastReport?.errors?.[0] || "No fue posible entregar la notificacion.");
+      }
     } catch (error) {
       setActivityMessage(error.message || "No fue posible enviar la notificacion de prueba.");
     } finally {

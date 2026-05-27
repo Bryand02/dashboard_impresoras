@@ -28,6 +28,7 @@ class NotificationService {
   constructor() {
     this.vapid = this.loadOrCreateVapidKeys();
     this.subscriptions = loadJson(subscriptionsPath, []);
+    this.lastReport = null;
     this.configureWebPush();
   }
 
@@ -46,7 +47,7 @@ class NotificationService {
       return {
         publicKey: persisted.publicKey,
         privateKey: persisted.privateKey,
-        subject: persisted.subject || env.vapidSubject
+        subject: env.vapidSubject || persisted.subject
       };
     }
 
@@ -80,6 +81,19 @@ class NotificationService {
     return this.subscriptions;
   }
 
+  getStatus() {
+    return {
+      subject: this.vapid.subject,
+      publicKey: this.vapid.publicKey,
+      subscriptions: this.subscriptions.map((item) => ({
+        id: item.id,
+        deviceLabel: item.deviceLabel,
+        createdAt: item.createdAt
+      })),
+      lastReport: this.lastReport
+    };
+  }
+
   subscribe({ subscription, deviceLabel = "", platform = "web" }) {
     if (!subscription?.endpoint) {
       throw new Error("Subscription endpoint is required");
@@ -106,12 +120,19 @@ class NotificationService {
 
   async sendNotification(payload) {
     if (!this.subscriptions.length) {
-      return { sent: 0, failed: 0 };
+      this.lastReport = {
+        at: new Date().toISOString(),
+        sent: 0,
+        failed: 0,
+        errors: ["No hay dispositivos suscritos."]
+      };
+      return this.lastReport;
     }
 
     let sent = 0;
     let failed = 0;
     const staleEndpoints = [];
+    const errors = [];
     const body = JSON.stringify(payload);
 
     await Promise.all(
@@ -121,6 +142,12 @@ class NotificationService {
           sent += 1;
         } catch (error) {
           failed += 1;
+          errors.push(`${item.deviceLabel || "device"}: ${error.statusCode || "error"} ${error.message}`);
+          console.error("[notifications] push failed", {
+            endpoint: item.subscription?.endpoint,
+            statusCode: error.statusCode,
+            message: error.message
+          });
           if (error.statusCode === 404 || error.statusCode === 410) {
             staleEndpoints.push(item.subscription?.endpoint);
           }
@@ -135,7 +162,13 @@ class NotificationService {
       this.persistSubscriptions();
     }
 
-    return { sent, failed };
+    this.lastReport = {
+      at: new Date().toISOString(),
+      sent,
+      failed,
+      errors
+    };
+    return this.lastReport;
   }
 
   async sendPrinterEvent(event) {
