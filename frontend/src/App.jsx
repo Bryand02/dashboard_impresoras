@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
+import { FloatingCameraWindow } from "./components/FloatingCameraWindow";
 import { PrinterConfigModal } from "./components/PrinterConfigModal";
 import { APP_VERSION } from "./config/version";
 import { fallbackData } from "./data/fallbackData";
@@ -26,6 +27,8 @@ function App() {
   const [libraryQuery, setLibraryQuery] = useState("");
   const [dispatchState, setDispatchState] = useState({ file: null, preview: null });
   const [activityMessage, setActivityMessage] = useState("");
+  const [floatingCamera, setFloatingCamera] = useState(null);
+  const [floatingCameraPosition, setFloatingCameraPosition] = useState({ x: 24, y: 24 });
 
   useEffect(() => {
     let socket;
@@ -160,6 +163,11 @@ function App() {
     setDispatchState({ file: null, preview: null });
   };
 
+  const handleOpenFloatingCamera = (printer) => {
+    setFloatingCamera(printer);
+    setFloatingCameraPosition({ x: 24, y: 24 });
+  };
+
   return (
     <div className="panel-grid min-h-screen bg-grid px-3 py-3 text-slate-100 sm:px-4 xl:px-5">
       <div className="mx-auto max-w-[2300px] space-y-4">
@@ -215,6 +223,7 @@ function App() {
             onToggleLight={handleToggleLight}
             onPowerAction={handlePowerAction}
             onMarkReady={handleMarkReady}
+            onOpenFloatingCamera={handleOpenFloatingCamera}
           />
         )}
 
@@ -250,6 +259,14 @@ function App() {
           onClose={() => setDispatchState({ file: null, preview: null })}
           onConfirm={handleConfirmDispatch}
         />
+        {floatingCamera && (
+          <FloatingCameraWindow
+            printer={floatingCamera}
+            position={floatingCameraPosition}
+            onMove={setFloatingCameraPosition}
+            onClose={() => setFloatingCamera(null)}
+          />
+        )}
       </div>
     </div>
   );

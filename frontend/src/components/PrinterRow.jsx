@@ -19,7 +19,7 @@ const cleanProfile = (printer) => {
   return material ? `${material} en impresion` : "Impresion activa";
 };
 
-export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction, onMarkReady }) {
+export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction, onMarkReady, onOpenFloatingCamera }) {
   const jobTitle = cleanJobName(printer.telemetry.currentFile);
   const isPoweredOff = printer.powerState !== "on";
   const isPrinting = printer.state === "printing";
@@ -57,7 +57,7 @@ export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction
       </div>
 
       <div className="space-y-2">
-        <CameraPreview printer={printer} />
+        <CameraPreview printer={printer} onOpenFloating={onOpenFloatingCamera} />
         {canMarkReady && (
           <button
             type="button"

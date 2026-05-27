@@ -30,7 +30,7 @@ function FullscreenIcon() {
   );
 }
 
-function PipIcon() {
+function FloatingIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -39,7 +39,7 @@ function PipIcon() {
   );
 }
 
-export function CameraPreview({ printer }) {
+export function CameraPreview({ printer, onOpenFloating }) {
   const cameraUrl = printer.cameraUrl || "";
   const frameRef = useRef(null);
   const videoRef = useRef(null);
@@ -51,23 +51,6 @@ export function CameraPreview({ printer }) {
   const handleFullscreen = async () => {
     if (!frameRef.current?.requestFullscreen) return;
     await frameRef.current.requestFullscreen();
-  };
-
-  const handlePictureInPicture = async () => {
-    const video = videoRef.current;
-    if (!video || !document.pictureInPictureEnabled) return;
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-        return;
-      }
-      if (video.paused) {
-        await video.play().catch(() => {});
-      }
-      await video.requestPictureInPicture();
-    } catch {
-      // The browser can reject PiP if user gesture/state doesn't allow it.
-    }
   };
 
   return (
@@ -111,8 +94,8 @@ export function CameraPreview({ printer }) {
 
         {isWebUrl(cameraUrl) && (
           <div className="absolute bottom-3 right-3 flex items-center gap-2">
-            <button type="button" onClick={handlePictureInPicture} className={iconButtonClass} aria-label="Picture in picture">
-              <PipIcon />
+            <button type="button" onClick={onOpenFloating} className={iconButtonClass} aria-label="Abrir mini ventana flotante">
+              <FloatingIcon />
             </button>
             <button type="button" onClick={handleFullscreen} className={iconButtonClass} aria-label="Pantalla completa">
               <FullscreenIcon />
