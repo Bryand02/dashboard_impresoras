@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import { libraryService } from "./libraryService.js";
 import { printerConfigService } from "./printerConfigService.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
@@ -21,18 +24,27 @@ class MoonrakerService {
     return url.replace(/\/+$/, "");
   }
 
-  async requestJson(url) {
+  async request(url, options = {}) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
     try {
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await fetch(url, { ...options, signal: controller.signal });
       if (!response.ok) {
-        throw new Error(`Moonraker request failed with ${response.status}`);
+        const errorText = await response.text().catch(() => "");
+        throw new Error(`Moonraker request failed with ${response.status}${errorText ? `: ${errorText}` : ""}`);
       }
-      return await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return await response.json();
+      }
+      return null;
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  async requestJson(url, options = {}) {
+    return this.request(url, options);
   }
 
   async getPrinterSnapshot(printer) {
@@ -133,16 +145,67 @@ class MoonrakerService {
   }
 
   async uploadGcode(printer, file) {
+    const downloadPath = libraryService.getDownloadPath(file);
+    if (!downloadPath || !fs.existsSync(downloadPath)) {
+      throw new Error(`El archivo ${file.filename || file.name} no esta disponible en el servidor para subirlo a Moonraker.`);
+    }
+
+    const baseUrl = this.normalizeBaseUrl(printer.moonrakerUrl);
+    const fileBuffer = fs.readFileSync(downloadPath);
+    const form = new FormData();
+    form.append("root", "gcodes");
+    form.append("print", "true");
+    form.append(
+      "file",
+      new Blob([fileBuffer], { type: "application/octet-stream" }),
+      path.basename(file.filename || downloadPath)
+    );
+
+    const result = await this.requestJson(`${baseUrl}/server/files/upload`, {
+      method: "POST",
+      body: form
+    });
+
     return {
-      message: `Simulacion: ${file.filename} preparado para ${printer.name}.`,
-      uploadTarget: printer.moonrakerUrl
+      message: `${file.filename || file.name} enviado a ${printer.name}.`,
+      uploadTarget: printer.moonrakerUrl,
+      result
     };
   }
 
   async startPrint(printer, file) {
+    const baseUrl = this.normalizeBaseUrl(printer.moonrakerUrl);
+    const encodedFile = encodeURIComponent(file.filename || file.name || "");
+    const result = await this.requestJson(`${baseUrl}/printer/print/start?filename=${encodedFile}`, {
+      method: "POST"
+    });
     return {
-      message: `Simulacion: inicio de impresion ${file.filename} en ${printer.name}.`
+      message: `Inicio de impresion solicitado para ${file.filename || file.name} en ${printer.name}.`,
+      result
     };
+  }
+
+  async restartService(printer, target) {
+    const baseUrl = this.normalizeBaseUrl(printer.moonrakerUrl);
+    const service = target === "moonraker" ? "moonraker" : "klipper";
+    try {
+      const result = await this.requestJson(`${baseUrl}/machine/services/restart?service=${service}`, {
+        method: "POST"
+      });
+      return {
+        message: `Reinicio solicitado para ${service} en ${printer.name}.`,
+        result
+      };
+    } catch (error) {
+      if (service === "moonraker") {
+        return {
+          message: `Reinicio solicitado para ${service} en ${printer.name}. La conexion puede cerrarse durante el reinicio.`,
+          result: null,
+          warning: error.message
+        };
+      }
+      throw error;
+    }
   }
 
   // Integracion real:

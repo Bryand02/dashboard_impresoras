@@ -49,6 +49,29 @@ printersRouter.post("/:id/light", async (req, res) => {
   return res.json({ printer: updated, homeAssistant: haResponse });
 });
 
+printersRouter.post("/:id/restart", async (req, res) => {
+  const printer = printerConfigService.getById(req.params.id);
+  if (!printer) return res.status(404).json({ message: "Printer not found" });
+
+  const target = req.body.target === "moonraker" ? "moonraker" : "klipper";
+  if (printer.powerState !== "on" || printer.state !== "offline") {
+    return res.status(409).json({
+      message: `Solo se puede reiniciar ${target} cuando ${printer.name} esta offline y encendida.`
+    });
+  }
+
+  try {
+    const restartResponse = await moonrakerService.restartService(printer, target);
+    const updated = printerConfigService.markServiceRestart(req.params.id, target);
+    return res.json({ printer: updated, restart: restartResponse });
+  } catch (error) {
+    return res.status(502).json({
+      message: `No fue posible reiniciar ${target} en ${printer.name}.`,
+      reason: error.message
+    });
+  }
+});
+
 printersRouter.post("/:id/ready", (req, res) => {
   const printer = printerConfigService.markReady(req.params.id);
   if (!printer) return res.status(404).json({ message: "Printer not found" });

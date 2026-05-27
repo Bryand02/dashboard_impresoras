@@ -15,6 +15,7 @@ import {
   fetchBootstrap,
   importLibraryFile,
   markPrinterReady,
+  restartPrinterService,
   togglePrinterLight,
   updatePrinter,
   updatePrinterPower
@@ -107,7 +108,20 @@ function App() {
       return;
     }
     await updatePrinterPower(printer.id, action);
-    setActivityMessage(`${printer.name}: ${action}.`);
+    setActivityMessage(
+      action === "on"
+        ? `${printer.name} encendida. Si sigue offline, puedes reiniciar Klipper o Moonraker.`
+        : `${printer.name} apagada desde Home Assistant.`
+    );
+  };
+
+  const handleRestartService = async (printer, target) => {
+    const response = await restartPrinterService(printer.id, target);
+    setActivityMessage(
+      response.message
+        ? response.message
+        : `${target === "moonraker" ? "Moonraker" : "Klipper"} reiniciado en ${printer.name}.`
+    );
   };
 
   const summary = useMemo(() => {
@@ -220,6 +234,7 @@ function App() {
             onOpenConfig={handleOpenConfig}
             onToggleLight={handleToggleLight}
             onPowerAction={handlePowerAction}
+            onRestartService={handleRestartService}
             onMarkReady={handleMarkReady}
             onOpenFloatingCamera={handleOpenFloatingCamera}
           />

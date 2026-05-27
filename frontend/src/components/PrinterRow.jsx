@@ -19,11 +19,20 @@ const cleanProfile = (printer) => {
   return material ? `${material} en impresion` : "Impresion activa";
 };
 
-export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction, onMarkReady, onOpenFloatingCamera }) {
+export function PrinterRow({
+  printer,
+  onOpenConfig,
+  onToggleLight,
+  onPowerAction,
+  onRestartService,
+  onMarkReady,
+  onOpenFloatingCamera
+}) {
   const jobTitle = cleanJobName(printer.telemetry.currentFile);
   const isPoweredOff = printer.powerState !== "on";
   const isPrinting = printer.state === "printing";
   const canMarkReady = printer.state === "finished" && !isPoweredOff;
+  const canRestartServices = printer.powerState === "on" && printer.state === "offline";
 
   return (
     <article
@@ -146,6 +155,24 @@ export function PrinterRow({ printer, onOpenConfig, onToggleLight, onPowerAction
       </div>
 
       <div className="mt-auto">
+        {canRestartServices && (
+          <div className="mb-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onRestartService("klipper")}
+              className="rounded-2xl border border-sky-300/25 bg-sky-400/10 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-100"
+            >
+              Reiniciar Klipper
+            </button>
+            <button
+              type="button"
+              onClick={() => onRestartService("moonraker")}
+              className="rounded-2xl border border-violet-300/25 bg-violet-400/10 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-100"
+            >
+              Reiniciar Moonraker
+            </button>
+          </div>
+        )}
         {printer.powerEnabled ? (
           <HomeAssistantPowerButton powerState={printer.powerState} onAction={onPowerAction} disabled={isPrinting} />
         ) : (

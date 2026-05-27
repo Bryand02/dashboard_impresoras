@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { libraryService } from "../services/libraryService.js";
+import { moonrakerService } from "../services/moonrakerService.js";
 import { printerAssignmentService } from "../services/printerAssignmentService.js";
+import { printerConfigService } from "../services/printerConfigService.js";
 import { queueService } from "../services/queueService.js";
 
 export const queueRouter = Router();
@@ -44,10 +46,40 @@ queueRouter.get("/assignment-preview/:fileId", (req, res) => {
   return res.json(printerAssignmentService.getAssignmentPreview(file));
 });
 
-queueRouter.post("/dispatch/:fileId", (req, res) => {
+queueRouter.post("/dispatch/:fileId", async (req, res) => {
   const file = libraryService.getById(req.params.fileId);
   if (!file) return res.status(404).json({ message: "File not found" });
   const mode = req.body.mode || "auto";
   const printerId = req.body.printerId || null;
-  return res.json(printerAssignmentService.dispatchFile(file, printerId, mode));
+  const dispatchResult = printerAssignmentService.dispatchFile(file, printerId, mode);
+
+  if (!["assigned", "assigned_manual"].includes(dispatchResult.mode)) {
+    return res.json(dispatchResult);
+  }
+
+  const selectedPrinter = printerConfigService.getById(dispatchResult.selectedPrinter.id);
+  if (!selectedPrinter) {
+    return res.status(404).json({ mode: "blocked", message: "Printer not found" });
+  }
+
+  try {
+    const moonraker = await moonrakerService.uploadGcode(selectedPrinter, file);
+    printerConfigService.markDispatched(selectedPrinter.id, file);
+    const updatedFile = libraryService.update(file.id, {
+      printCount: (file.printCount || 0) + 1
+    });
+
+    return res.json({
+      ...dispatchResult,
+      selectedPrinter: printerConfigService.getById(selectedPrinter.id),
+      moonraker,
+      file: updatedFile
+    });
+  } catch (error) {
+    return res.status(502).json({
+      mode: "blocked",
+      message: `No fue posible enviar ${file.filename || file.name} a ${selectedPrinter.name}.`,
+      reason: error.message
+    });
+  }
 });

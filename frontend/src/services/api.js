@@ -31,6 +31,15 @@ export const updatePrinterPower = async (printerId, action) => {
   return response.json();
 };
 
+export const restartPrinterService = async (printerId, target) => {
+  const response = await fetch(`${API_URL}/printers/${printerId}/restart`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target })
+  });
+  return response.json();
+};
+
 export const createPrinter = async (payload) => {
   const response = await fetch(`${API_URL}/printers`, {
     method: "POST",

@@ -66,14 +66,15 @@ class PrinterConfigService {
     printer.powerState = action === "on" ? "on" : "off";
     printer.powerOverride = printer.powerState;
     printer.readyOverride = false;
-    printer.state = action === "on" ? "online" : "offline";
-    printer.telemetry.currentFile = action === "on" ? "Encendida por Home Assistant" : "Apagada por Home Assistant";
+    printer.state = action === "on" ? "offline" : "offline";
+    printer.telemetry.currentFile = action === "on" ? "Esperando Moonraker / Klipper" : "Apagada por Home Assistant";
     return printer;
   }
 
   syncPowerState(id, powerState) {
     const printer = this.getById(id);
     if (!printer) return null;
+    const previousPowerState = printer.powerState;
     printer.powerState = powerState === "on" ? "on" : "off";
     printer.powerOverride = printer.powerState;
     if (printer.powerState === "off") {
@@ -91,6 +92,11 @@ class PrinterConfigService {
           target: 0
         },
         currentFile: "Apagada por Home Assistant"
+      };
+    } else if (previousPowerState === "off" && printer.state === "offline") {
+      printer.telemetry = {
+        ...printer.telemetry,
+        currentFile: "Esperando Moonraker / Klipper"
       };
     }
     return printer;
@@ -143,6 +149,40 @@ class PrinterConfigService {
     const printer = this.getById(id);
     if (!printer) return null;
     printer.lightState = printer.lightState === "on" ? "off" : "on";
+    return printer;
+  }
+
+  markDispatched(id, file) {
+    const printer = this.getById(id);
+    if (!printer) return null;
+    printer.readyOverride = false;
+    printer.powerState = "on";
+    printer.powerOverride = "on";
+    printer.state = "printing";
+    printer.activeMaterial = file.material || printer.activeMaterial;
+    printer.queueSize = Math.max(0, (printer.queueSize || 0) - 1);
+    printer.telemetry = {
+      ...printer.telemetry,
+      progress: 0,
+      elapsedMinutes: 0,
+      remainingMinutes: file.estimatedMinutes || printer.telemetry.remainingMinutes || 0,
+      estimatedMinutes: file.estimatedMinutes || printer.telemetry.estimatedMinutes || 0,
+      currentFile: file.filename || file.name || "Trabajo enviado",
+      velocity: 0
+    };
+    return printer;
+  }
+
+  markServiceRestart(id, target) {
+    const printer = this.getById(id);
+    if (!printer) return null;
+    printer.powerState = "on";
+    printer.powerOverride = "on";
+    printer.state = "offline";
+    printer.telemetry = {
+      ...printer.telemetry,
+      currentFile: target === "moonraker" ? "Reiniciando Moonraker..." : "Reiniciando Klipper..."
+    };
     return printer;
   }
 }
