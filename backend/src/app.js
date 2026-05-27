@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
 import { libraryRouter } from "./routes/library.js";
+import { notificationsRouter } from "./routes/notifications.js";
 import { printHostRouter } from "./routes/printHost.js";
 import { printersRouter } from "./routes/printers.js";
 import { queueRouter } from "./routes/queue.js";
@@ -26,6 +27,7 @@ app.use("/api/printers", printersRouter);
 app.use("/api/library", libraryRouter);
 app.use("/api/queue", queueRouter);
 app.use("/api/system", systemRouter);
+app.use("/api/notifications", notificationsRouter);
 
 app.use(express.static(frontendDistPath));
 

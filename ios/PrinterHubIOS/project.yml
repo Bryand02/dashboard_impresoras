@@ -1,0 +1,37 @@
+name: PrinterHubIOS
+options:
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: com.platia.printerhub
+    SWIFT_VERSION: 5.0
+    DEVELOPMENT_TEAM: ""
+targets:
+  PrinterHubMobile:
+    type: application
+    platform: iOS
+    sources:
+      - path: PrinterHubMobile
+    settings:
+      base:
+        INFOPLIST_FILE: PrinterHubMobile/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.platia.printerhub.mobile
+        CODE_SIGN_ENTITLEMENTS: PrinterHubMobile/PrinterHubMobile.entitlements
+    dependencies:
+      - target: PrinterHubWidgets
+  PrinterHubWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PrinterHubWidgets
+      - path: PrinterHubMobile/Models
+      - path: PrinterHubMobile/Services/SharedStatusStore.swift
+    settings:
+      base:
+        INFOPLIST_FILE: PrinterHubWidgets/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.platia.printerhub.widgets
+        CODE_SIGN_ENTITLEMENTS: PrinterHubWidgets/PrinterHubWidgets.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        PRODUCT_NAME: PrinterHubWidgets
+        SKIP_INSTALL: YES

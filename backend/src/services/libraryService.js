@@ -58,22 +58,20 @@ const loadPersistedState = () => {
   try {
     const parsed = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
     const diskFolders = collectFoldersFromDisk();
-    const mergedFolders = Array.from(
-      new Set([
-        ...defaultFolders,
-        ...(Array.isArray(parsed.folders) ? parsed.folders : []),
-        ...diskFolders
-      ])
-    );
+    const persistedFolders = Array.isArray(parsed.folders) ? parsed.folders : [];
+    const fileFolders = Array.isArray(parsed.files)
+      ? parsed.files.map((file) => normalizeFolderPath(file.folder || "General")).filter(Boolean)
+      : [];
+    const mergedFolders = Array.from(new Set([...persistedFolders, ...diskFolders, ...fileFolders]));
     if (Array.isArray(parsed)) {
       return {
         files: parsed.map((file) => ({ folder: "General", ...file })),
-        folders: mergedFolders
+        folders: mergedFolders.length ? mergedFolders : [...defaultFolders]
       };
     }
     return {
       files: Array.isArray(parsed.files) ? parsed.files.map((file) => ({ folder: "General", ...file })) : [],
-      folders: mergedFolders
+      folders: mergedFolders.length ? mergedFolders : [...defaultFolders]
     };
   } catch {
     return {

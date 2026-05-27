@@ -22,6 +22,39 @@ export const fetchBootstrap = async () => {
   return response.json();
 };
 
+export const fetchNotificationConfig = async () => {
+  const response = await fetch(`${API_URL}/notifications/config`);
+  if (!response.ok) throw new Error("No fue posible cargar configuracion de notificaciones");
+  return response.json();
+};
+
+export const subscribeNotifications = async (payload) => {
+  const response = await fetch(`${API_URL}/notifications/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  return response.json();
+};
+
+export const unsubscribeNotifications = async (endpoint) => {
+  const response = await fetch(`${API_URL}/notifications/unsubscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint })
+  });
+  return response.json();
+};
+
+export const sendTestNotification = async () => {
+  const response = await fetch(`${API_URL}/notifications/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  return response.json();
+};
+
 export const updatePrinterPower = async (printerId, action) => {
   const response = await fetch(`${API_URL}/printers/${printerId}/power`, {
     method: "POST",

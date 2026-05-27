@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
 import { FloatingCameraWindow } from "./components/FloatingCameraWindow";
+import { NotificationSetup } from "./components/NotificationSetup";
 import { PrinterConfigModal } from "./components/PrinterConfigModal";
 import { APP_VERSION } from "./config/version";
 import { fallbackData } from "./data/fallbackData";
@@ -13,15 +14,20 @@ import {
   deleteLibraryFolder,
   deleteLibraryFile,
   dispatchLibraryFile,
+  fetchNotificationConfig,
   fetchAssignmentPreview,
   fetchBootstrap,
   importLibraryFile,
   markPrinterReady,
   restartPrinterService,
+  sendTestNotification,
+  subscribeNotifications,
   togglePrinterLight,
+  unsubscribeNotifications,
   updatePrinter,
   updatePrinterPower
 } from "./services/api";
+import { getPushSubscription, subscribeToPush, unsubscribeFromPush } from "./services/pwa";
 
 function App() {
   const [data, setData] = useState(fallbackData);
@@ -32,6 +38,21 @@ function App() {
   const [dispatchState, setDispatchState] = useState({ file: null, preview: null });
   const [activityMessage, setActivityMessage] = useState("");
   const [floatingCamera, setFloatingCamera] = useState(null);
+  const [notificationState, setNotificationState] = useState({
+    permission: typeof Notification !== "undefined" ? Notification.permission : "default",
+    subscribed: false,
+    busy: false
+  });
+
+  const refreshNotificationState = useCallback(async () => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    const subscription = await getPushSubscription();
+    setNotificationState((current) => ({
+      ...current,
+      permission: typeof Notification !== "undefined" ? Notification.permission : "default",
+      subscribed: Boolean(subscription)
+    }));
+  }, []);
 
   const reloadData = useCallback(async () => {
     const bootstrap = await fetchBootstrap();
@@ -50,6 +71,7 @@ function App() {
       .catch(() => {
         setData(fallbackData);
       });
+    refreshNotificationState().catch(() => {});
 
     socket = createSocket((message) => {
       if (message.type === "snapshot") {
@@ -63,7 +85,7 @@ function App() {
     });
 
     return () => socket?.close();
-  }, [reloadData]);
+  }, [reloadData, refreshNotificationState]);
 
   const handleAddPrinter = async () => {
     const name = window.prompt("Nombre de la impresora");
@@ -232,6 +254,61 @@ function App() {
     setFloatingCamera(printer);
   };
 
+  const handleEnableNotifications = async () => {
+    try {
+      setNotificationState((current) => ({ ...current, busy: true }));
+      if (typeof Notification === "undefined") {
+        throw new Error("Este navegador no soporta notificaciones.");
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setActivityMessage("Permiso de notificaciones denegado.");
+        return;
+      }
+      const { publicKey } = await fetchNotificationConfig();
+      const subscription = await subscribeToPush(publicKey);
+      await subscribeNotifications({
+        subscription,
+        deviceLabel: navigator.userAgent.includes("iPhone") ? "iPhone" : "Web App",
+        platform: navigator.userAgent
+      });
+      await refreshNotificationState();
+      setActivityMessage("Notificaciones activadas correctamente.");
+    } catch (error) {
+      setActivityMessage(error.message || "No fue posible activar notificaciones.");
+    } finally {
+      setNotificationState((current) => ({ ...current, busy: false }));
+    }
+  };
+
+  const handleDisableNotifications = async () => {
+    try {
+      setNotificationState((current) => ({ ...current, busy: true }));
+      const subscription = await unsubscribeFromPush();
+      if (subscription?.endpoint) {
+        await unsubscribeNotifications(subscription.endpoint);
+      }
+      await refreshNotificationState();
+      setActivityMessage("Notificaciones desactivadas.");
+    } catch (error) {
+      setActivityMessage(error.message || "No fue posible desactivar notificaciones.");
+    } finally {
+      setNotificationState((current) => ({ ...current, busy: false }));
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      setNotificationState((current) => ({ ...current, busy: true }));
+      await sendTestNotification();
+      setActivityMessage("Notificacion de prueba enviada.");
+    } catch (error) {
+      setActivityMessage(error.message || "No fue posible enviar la notificacion de prueba.");
+    } finally {
+      setNotificationState((current) => ({ ...current, busy: false }));
+    }
+  };
+
   return (
     <div className="panel-grid min-h-screen bg-grid px-3 py-3 text-slate-100 sm:px-4 xl:px-5">
       <div className="mx-auto max-w-[2300px] space-y-4">
@@ -279,6 +356,15 @@ function App() {
             ))}
           </div>
         </header>
+
+        <NotificationSetup
+          permission={notificationState.permission}
+          subscribed={notificationState.subscribed}
+          busy={notificationState.busy}
+          onEnable={handleEnableNotifications}
+          onDisable={handleDisableNotifications}
+          onTest={handleTestNotification}
+        />
 
         {activeView === "dashboard" && (
           <DashboardSection

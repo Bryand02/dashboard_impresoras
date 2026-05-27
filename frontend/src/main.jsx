@@ -1,7 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import { registerServiceWorker } from "./services/pwa.js";
 import "./styles/index.css";
+
+registerServiceWorker().catch(() => {});
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

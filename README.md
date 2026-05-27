@@ -11,6 +11,8 @@ Centro de control industrial para multiples impresoras 3D con Klipper, Moonraker
 - Importacion local de `.gcode` con extraccion automatica de miniatura, tiempo y material
 - Host virtual compatible con OrcaSlicer para enviar `Print` directo a la biblioteca
 - Sugerencia de impresora libre antes de despachar una impresion
+- PWA instalable con notificaciones push para iPhone
+- Base nativa iOS para widget y Live Activity
 
 ## Stack
 
@@ -25,6 +27,8 @@ Centro de control industrial para multiples impresoras 3D con Klipper, Moonraker
 - `backend/`: API, WebSocket y servicios
 - `backend/src/services/moonrakerService.js`: sincronizacion live con Moonraker
 - `backend/src/services/homeAssistantService.js`: punto de integracion con Home Assistant
+- `backend/src/services/notificationService.js`: push notifications web
+- `ios/PrinterHubIOS/`: app iPhone + widget + Live Activity base
 
 ## Desarrollo local
 
@@ -54,6 +58,45 @@ npm run start
 ```
 
 Luego abre `http://localhost:8099`.
+
+## iPhone
+
+### Fase 1: PWA con notificaciones
+
+1. Publica la web con `HTTPS`.
+2. En iPhone abre `https://gestor3d.platia.com.co` en Safari.
+3. Toca `Compartir` -> `Agregar a pantalla de inicio`.
+4. Abre la app instalada.
+5. Dentro de `Printer Hub`, toca `Activar push`.
+6. Permite notificaciones cuando iOS lo pida.
+
+Eventos que ya pueden disparar aviso:
+
+- impresion terminada
+- impresora lista
+- error
+- apagado por Home Assistant
+
+### Fase 2: app iOS nativa
+
+Dentro de `ios/PrinterHubIOS` queda la base para:
+
+- app nativa iPhone
+- widget
+- Live Activity inicial
+
+Generacion del proyecto en Mac:
+
+```bash
+cd ios/PrinterHubIOS
+brew install xcodegen
+xcodegen generate
+open PrinterHubIOS.xcodeproj
+```
+
+Lee tambien:
+
+- `ios/PrinterHubIOS/README.md`
 
 ## Despliegue en servidor
 
@@ -95,6 +138,8 @@ Compatibilidad implementada:
 - `POST /api/files/local`
 - `GET /api/version`
 - `GET /server/info`
+- `GET /api/notifications/config`
+- `POST /api/notifications/subscribe`
 
 ## Variables de entorno
 
@@ -105,6 +150,9 @@ PORT=8099
 CORS_ORIGIN=http://localhost:5173
 HOME_ASSISTANT_URL=
 HOME_ASSISTANT_TOKEN=
+VAPID_SUBJECT=mailto:printerhub@local
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
 ```
 
 ## Docker
