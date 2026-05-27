@@ -26,7 +26,7 @@ export function PrinterConfigSection({ printers, onCreate, onDelete }) {
       profile: form.profile,
       materials: form.materials.split(",").map((item) => item.trim()),
       volume: { x: Number(form.volumeX), y: Number(form.volumeY), z: Number(form.volumeZ) },
-      image: form.image || "https://images.unsplash.com/photo-1596495577886-d920f1fb7238?auto=format&fit=crop&w=600&q=80"
+      image: form.image || ""
     });
     setForm(emptyPrinter);
   };

@@ -66,7 +66,7 @@ function App() {
       profile: "Moonraker Live",
       materials: ["PLA"],
       volume: { x: 235, y: 235, z: 250 },
-      image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
+      image: ""
     });
     setActivityMessage(`Impresora ${name} agregada.`);
   };
