@@ -28,7 +28,6 @@ function App() {
   const [dispatchState, setDispatchState] = useState({ file: null, preview: null });
   const [activityMessage, setActivityMessage] = useState("");
   const [floatingCamera, setFloatingCamera] = useState(null);
-  const [floatingCameraPosition, setFloatingCameraPosition] = useState({ x: 24, y: 24 });
 
   useEffect(() => {
     let socket;
@@ -165,7 +164,6 @@ function App() {
 
   const handleOpenFloatingCamera = (printer) => {
     setFloatingCamera(printer);
-    setFloatingCameraPosition({ x: 24, y: 24 });
   };
 
   return (
@@ -262,8 +260,6 @@ function App() {
         {floatingCamera && (
           <FloatingCameraWindow
             printer={floatingCamera}
-            position={floatingCameraPosition}
-            onMove={setFloatingCameraPosition}
             onClose={() => setFloatingCamera(null)}
           />
         )}
