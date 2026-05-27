@@ -1,7 +1,6 @@
 import { useMemo, useRef } from "react";
 
 const isWebUrl = (url = "") => /^https?:\/\//i.test(url);
-const isRtspUrl = (url = "") => /^rtsp:\/\//i.test(url);
 
 const getGo2RtcEmbedUrl = (cameraUrl) => {
   try {
@@ -18,11 +17,34 @@ const getGo2RtcEmbedUrl = (cameraUrl) => {
   }
 };
 
+const iconButtonClass =
+  "flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/60 text-slate-100 backdrop-blur transition hover:border-white/25 hover:bg-black/75";
+
+function FullscreenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3H3v5" />
+      <path d="M16 3h5v5" />
+      <path d="M21 16v5h-5" />
+      <path d="M3 16v5h5" />
+    </svg>
+  );
+}
+
+function PopoutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="6" width="12" height="12" rx="2" />
+      <path d="M14 4h6v6" />
+      <path d="M20 4l-7 7" />
+    </svg>
+  );
+}
+
 export function CameraPreview({ printer }) {
   const cameraUrl = printer.cameraUrl || "";
   const frameRef = useRef(null);
   const showIframe = isWebUrl(cameraUrl);
-  const showRtspHint = isRtspUrl(cameraUrl);
   const embedUrl = useMemo(() => (showIframe ? getGo2RtcEmbedUrl(cameraUrl) : ""), [cameraUrl, showIframe]);
 
   const handleFullscreen = async () => {
@@ -30,9 +52,18 @@ export function CameraPreview({ printer }) {
     await frameRef.current.requestFullscreen();
   };
 
+  const handlePopout = () => {
+    if (!cameraUrl) return;
+    window.open(
+      cameraUrl,
+      `camera-${printer.id}`,
+      "popup=yes,width=960,height=640,resizable=yes,scrollbars=no"
+    );
+  };
+
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/65">
-      <div ref={frameRef} className="relative h-44 overflow-hidden bg-black">
+      <div ref={frameRef} className="relative h-48 overflow-hidden bg-black">
         {showIframe ? (
           <iframe
             src={embedUrl}
@@ -45,10 +76,12 @@ export function CameraPreview({ printer }) {
             scrolling="no"
           />
         ) : (
-          <>
-            <img src={printer.image} alt={printer.name} className="h-full w-full object-cover opacity-55" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
-          </>
+          <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#18253a_0%,#0b1220_58%,#050914_100%)] text-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">No signal</p>
+              <p className="mt-2 text-[11px] text-slate-600">Configura una URL web de camara</p>
+            </div>
+          </div>
         )}
 
         <div className="absolute left-3 top-3 rounded-full bg-black/55 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-accent">
@@ -56,25 +89,14 @@ export function CameraPreview({ printer }) {
         </div>
 
         {showIframe && (
-          <button
-            type="button"
-            onClick={handleFullscreen}
-            className="absolute bottom-3 right-3 rounded-full border border-white/15 bg-black/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100 backdrop-blur"
-          >
-            Full
-          </button>
-        )}
-      </div>
-
-      <div className="space-y-1 px-3 py-2">
-        <span className="block truncate text-[11px] text-slate-500">{cameraUrl || "Sin URL de camara"}</span>
-        {showIframe && (
-          <span className="block text-[10px] text-slate-600">
-            Vista ajustada, silenciada por defecto y lista para pantalla completa.
-          </span>
-        )}
-        {showRtspHint && (
-          <span className="block text-[10px] text-slate-600">RTSP directo no abre en navegador. Usa una URL web del proxy.</span>
+          <div className="absolute bottom-3 right-3 flex items-center gap-2">
+            <button type="button" onClick={handlePopout} className={iconButtonClass} aria-label="Abrir mini ventana flotante">
+              <PopoutIcon />
+            </button>
+            <button type="button" onClick={handleFullscreen} className={iconButtonClass} aria-label="Pantalla completa">
+              <FullscreenIcon />
+            </button>
+          </div>
         )}
       </div>
     </div>
