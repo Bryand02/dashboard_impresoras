@@ -25,6 +25,7 @@ import {
   subscribeNotifications,
   togglePrinterLight,
   unsubscribeNotifications,
+  updateNotificationPreferences,
   updatePrinter,
   updatePrinterPower
 } from "./services/api";
@@ -42,16 +43,31 @@ function App() {
   const [notificationState, setNotificationState] = useState({
     permission: typeof Notification !== "undefined" ? Notification.permission : "default",
     subscribed: false,
-    busy: false
+    busy: false,
+    expanded: false,
+    options: [],
+    preferences: {}
   });
 
   const refreshNotificationState = useCallback(async () => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     const subscription = await getPushSubscription();
+    let config = null;
+    let status = null;
+    try {
+      config = await fetchNotificationConfig();
+      status = await fetchNotificationStatus();
+    } catch {}
+    const currentEndpoint = subscription?.endpoint;
+    const matchedDevice = currentEndpoint
+      ? status?.subscriptions?.find((item) => item.id === currentEndpoint)
+      : null;
     setNotificationState((current) => ({
       ...current,
       permission: typeof Notification !== "undefined" ? Notification.permission : "default",
-      subscribed: Boolean(subscription)
+      subscribed: Boolean(subscription),
+      options: config?.options || current.options,
+      preferences: matchedDevice?.preferences || config?.defaults || current.preferences || {}
     }));
   }, []);
 
@@ -271,7 +287,8 @@ function App() {
       await subscribeNotifications({
         subscription,
         deviceLabel: navigator.userAgent.includes("iPhone") ? "iPhone" : "Web App",
-        platform: navigator.userAgent
+        platform: navigator.userAgent,
+        preferences: notificationState.preferences
       });
       await refreshNotificationState();
       setActivityMessage("Notificaciones activadas correctamente.");
@@ -312,6 +329,24 @@ function App() {
       setActivityMessage(error.message || "No fue posible enviar la notificacion de prueba.");
     } finally {
       setNotificationState((current) => ({ ...current, busy: false }));
+    }
+  };
+
+  const handleToggleNotificationPanel = () => {
+    setNotificationState((current) => ({ ...current, expanded: !current.expanded }));
+  };
+
+  const handlePreferenceChange = async (key, enabled) => {
+    const nextPreferences = { ...notificationState.preferences, [key]: enabled };
+    setNotificationState((current) => ({ ...current, preferences: nextPreferences }));
+    try {
+      const subscription = await getPushSubscription();
+      if (subscription?.endpoint) {
+        await updateNotificationPreferences(subscription.endpoint, nextPreferences);
+      }
+      setActivityMessage("Preferencias de notificacion actualizadas.");
+    } catch (error) {
+      setActivityMessage(error.message || "No fue posible actualizar las preferencias.");
     }
   };
 
@@ -367,6 +402,11 @@ function App() {
           permission={notificationState.permission}
           subscribed={notificationState.subscribed}
           busy={notificationState.busy}
+          expanded={notificationState.expanded}
+          preferences={notificationState.preferences}
+          options={notificationState.options}
+          onToggleExpanded={handleToggleNotificationPanel}
+          onPreferenceChange={handlePreferenceChange}
           onEnable={handleEnableNotifications}
           onDisable={handleDisableNotifications}
           onTest={handleTestNotification}

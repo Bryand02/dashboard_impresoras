@@ -28,6 +28,19 @@ notificationsRouter.post("/unsubscribe", (req, res) => {
   return res.json(notificationService.unsubscribe(endpoint));
 });
 
+notificationsRouter.post("/preferences", (req, res) => {
+  const endpoint = req.body?.endpoint;
+  const preferences = req.body?.preferences;
+  if (!endpoint || !preferences) {
+    return res.status(400).json({ message: "endpoint and preferences are required" });
+  }
+  const result = notificationService.updatePreferences(endpoint, preferences);
+  if (!result.success) {
+    return res.status(404).json(result);
+  }
+  return res.json(result);
+});
+
 notificationsRouter.post("/test", async (req, res) => {
   const title = req.body?.title || "Printer Hub";
   const body = req.body?.body || "Prueba de notificacion enviada correctamente.";

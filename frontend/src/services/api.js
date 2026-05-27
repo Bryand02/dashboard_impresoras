@@ -52,6 +52,15 @@ export const unsubscribeNotifications = async (endpoint) => {
   return response.json();
 };
 
+export const updateNotificationPreferences = async (endpoint, preferences) => {
+  const response = await fetch(`${API_URL}/notifications/preferences`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint, preferences })
+  });
+  return response.json();
+};
+
 export const sendTestNotification = async () => {
   const response = await fetch(`${API_URL}/notifications/test`, {
     method: "POST",
