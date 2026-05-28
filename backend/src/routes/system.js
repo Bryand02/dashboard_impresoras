@@ -12,6 +12,7 @@ systemRouter.get("/bootstrap", (_req, res) => {
     library: libraryService.list(),
     libraryFolders: libraryService.listFolders(),
     queue: queueService.list(),
-    discovery: printerDiscoveryService.discover()
+    discovery: printerDiscoveryService.discover(),
+    lastUpdatedAt: new Date().toISOString()
   });
 });

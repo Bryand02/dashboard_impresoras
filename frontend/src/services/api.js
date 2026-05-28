@@ -17,7 +17,9 @@ const API_URL = getApiUrl();
 const WS_URL = getWsUrl();
 
 export const fetchBootstrap = async () => {
-  const response = await fetch(`${API_URL}/system/bootstrap`);
+  const response = await fetch(`${API_URL}/system/bootstrap`, {
+    cache: "no-store"
+  });
   if (!response.ok) throw new Error("No fue posible cargar bootstrap");
   return response.json();
 };
@@ -178,6 +180,17 @@ export const updateLibraryFile = async (fileId, payload) => {
   });
   return response.json();
 };
+
+export const moveLibraryFile = async (fileId, folder) => {
+  const response = await fetch(`${API_URL}/library/${fileId}/move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder })
+  });
+  return response.json();
+};
+
+export const getLibraryDownloadUrl = (fileId) => `${API_URL}/library/${fileId}/download`;
 
 export const deleteLibraryFile = async (fileId) => {
   const response = await fetch(`${API_URL}/library/${fileId}`, {

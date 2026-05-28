@@ -160,8 +160,22 @@ class LibraryService {
   update(id, payload) {
     const index = this.files.findIndex((file) => file.id === id);
     if (index === -1) return null;
+    const currentFile = this.files[index];
     if (payload.folder) {
-      payload.folder = this.ensureFolder(payload.folder);
+      const targetFolder = this.ensureFolder(payload.folder);
+      if (targetFolder && currentFile.storagePath) {
+        const currentPath = this.getDownloadPath(currentFile);
+        if (currentPath && fs.existsSync(currentPath)) {
+          const destinationDir = getFolderAbsolutePath(targetFolder);
+          fs.mkdirSync(destinationDir, { recursive: true });
+          const destinationPath = path.join(destinationDir, path.basename(currentPath));
+          if (currentPath !== destinationPath) {
+            fs.renameSync(currentPath, destinationPath);
+            payload.storagePath = path.relative(projectRoot, destinationPath).replace(/\\/g, "/");
+          }
+        }
+      }
+      payload.folder = targetFolder;
     }
     this.files[index] = { ...this.files[index], ...payload };
     this.persist();

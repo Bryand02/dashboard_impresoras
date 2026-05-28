@@ -20,6 +20,7 @@ import {
   fetchBootstrap,
   importLibraryFile,
   markPrinterReady,
+  moveLibraryFile,
   restartPrinterService,
   sendTestNotification,
   subscribeNotifications,
@@ -27,9 +28,12 @@ import {
   unsubscribeNotifications,
   updateNotificationPreferences,
   updatePrinter,
-  updatePrinterPower
+  updatePrinterPower,
+  getLibraryDownloadUrl
 } from "./services/api";
 import { getPushSubscription, subscribeToPush, unsubscribeFromPush } from "./services/pwa";
+
+const REFRESH_INTERVAL_MS = 8000;
 
 function App() {
   const [data, setData] = useState(fallbackData);
@@ -48,6 +52,9 @@ function App() {
     options: [],
     preferences: {}
   });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
 
   const refreshNotificationState = useCallback(async () => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -71,38 +78,92 @@ function App() {
     }));
   }, []);
 
-  const reloadData = useCallback(async () => {
-    const bootstrap = await fetchBootstrap();
+  const applySnapshot = useCallback((payload) => {
     setData({
-      printers: bootstrap.printers,
-      library: bootstrap.library,
-      libraryFolders: bootstrap.libraryFolders || fallbackData.libraryFolders,
-      queue: bootstrap.queue
+      printers: payload.printers,
+      library: payload.library,
+      libraryFolders: payload.libraryFolders || fallbackData.libraryFolders,
+      queue: payload.queue
     });
+    setLastSyncedAt(payload.lastUpdatedAt || new Date().toISOString());
   }, []);
+
+  const reloadData = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const bootstrap = await fetchBootstrap();
+      applySnapshot(bootstrap);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [applySnapshot]);
 
   useEffect(() => {
     let socket;
+    let reconnectTimer;
+    let refreshTimer;
+    let isDisposed = false;
+
+    const connectSocket = () => {
+      socket = createSocket((message) => {
+        if (message.type === "snapshot") {
+          applySnapshot(message.payload);
+        }
+      });
+
+      socket.addEventListener("open", () => {
+        setSocketConnected(true);
+      });
+
+      socket.addEventListener("close", () => {
+        setSocketConnected(false);
+        if (!isDisposed) {
+          reconnectTimer = window.setTimeout(() => {
+            connectSocket();
+          }, 2500);
+        }
+      });
+
+      socket.addEventListener("error", () => {
+        setSocketConnected(false);
+      });
+    };
+
+    const handleForegroundRefresh = () => {
+      if (document.hidden) return;
+      reloadData().catch(() => {});
+    };
+
     document.title = `Printer Hub v${APP_VERSION}`;
     reloadData()
       .catch(() => {
         setData(fallbackData);
       });
     refreshNotificationState().catch(() => {});
+    connectSocket();
 
-    socket = createSocket((message) => {
-      if (message.type === "snapshot") {
-        setData({
-          printers: message.payload.printers,
-          library: message.payload.library,
-          libraryFolders: message.payload.libraryFolders || fallbackData.libraryFolders,
-          queue: message.payload.queue
-        });
+    refreshTimer = window.setInterval(() => {
+      if (!document.hidden) {
+        reloadData().catch(() => {});
       }
-    });
+    }, REFRESH_INTERVAL_MS);
 
-    return () => socket?.close();
-  }, [reloadData, refreshNotificationState]);
+    window.addEventListener("focus", handleForegroundRefresh);
+    window.addEventListener("pageshow", handleForegroundRefresh);
+    window.addEventListener("online", handleForegroundRefresh);
+    document.addEventListener("visibilitychange", handleForegroundRefresh);
+
+    return () => {
+      isDisposed = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (refreshTimer) window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", handleForegroundRefresh);
+      window.removeEventListener("pageshow", handleForegroundRefresh);
+      window.removeEventListener("online", handleForegroundRefresh);
+      document.removeEventListener("visibilitychange", handleForegroundRefresh);
+      socket?.close();
+    };
+  }, [applySnapshot, reloadData, refreshNotificationState]);
 
   const handleAddPrinter = async () => {
     const name = window.prompt("Nombre de la impresora");
@@ -243,6 +304,23 @@ function App() {
     setActivityMessage(`Archivo ${fileId} eliminado.`);
   };
 
+  const handleMoveLibraryFile = async (file) => {
+    const availableFolders = (data.libraryFolders || fallbackData.libraryFolders).join(", ");
+    const targetFolder = window.prompt(
+      `Mover "${file.name}" a que carpeta?\n\nDisponibles: ${availableFolders}`,
+      file.folder || activeLibraryFolder || "General"
+    );
+    if (!targetFolder) return;
+    await moveLibraryFile(file.id, targetFolder);
+    await reloadData();
+    setActivityMessage(`Archivo ${file.name} movido a ${targetFolder}.`);
+  };
+
+  const handleDownloadLibraryFile = (file) => {
+    const url = getLibraryDownloadUrl(file.id);
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   const handleOpenDispatch = async (file) => {
     const preview = await fetchAssignmentPreview(file.id);
     setDispatchState({ file, preview });
@@ -350,6 +428,25 @@ function App() {
     }
   };
 
+  const handleManualRefresh = async () => {
+    try {
+      await reloadData();
+      setActivityMessage("Panel actualizado.");
+    } catch (error) {
+      setActivityMessage(error.message || "No fue posible actualizar el panel.");
+    }
+  };
+
+  const syncStatusText = useMemo(() => {
+    if (!lastSyncedAt) return "Sin sincronizar aun";
+    const stamp = new Date(lastSyncedAt);
+    return `Actualizado ${stamp.toLocaleTimeString("es-CO", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    })}`;
+  }, [lastSyncedAt]);
+
   return (
     <div className="panel-grid min-h-screen bg-grid px-3 py-3 text-slate-100 sm:px-4 xl:px-5">
       <div className="mx-auto max-w-[2300px] space-y-4">
@@ -361,8 +458,19 @@ function App() {
                 <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
                   v{APP_VERSION}
                 </span>
+                <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
+                  socketConnected
+                    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                    : "border-amber-400/20 bg-amber-400/10 text-amber-200"
+                }`}>
+                  {socketConnected ? "Live" : "Reconectando"}
+                </span>
               </div>
               <p className="mt-2 text-sm text-slate-400">Seguimiento rapido de la flota y biblioteca unificada de G-codes.</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {syncStatusText}
+                {isRefreshing ? " · Actualizando..." : ` · Auto-refresh ${REFRESH_INTERVAL_MS / 1000}s`}
+              </p>
               {activityMessage && <p className="mt-2 text-xs text-slate-500">{activityMessage}</p>}
             </div>
             <div className="flex items-center gap-3">
@@ -370,6 +478,13 @@ function App() {
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Imprimiendo ahora</p>
                 <p className="mt-2 font-display text-4xl text-slate-100">{summary.printing}</p>
               </div>
+              <button
+                type="button"
+                onClick={handleManualRefresh}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
+              >
+                {isRefreshing ? "Actualizando..." : "Actualizar"}
+              </button>
               <button
                 type="button"
                 onClick={handleAddPrinter}
@@ -446,6 +561,8 @@ function App() {
               onQueryChange={setLibraryQuery}
               onOpenUpload={() => document.getElementById("library-file-input")?.click()}
               onDelete={handleDeleteLibraryFile}
+              onMove={handleMoveLibraryFile}
+              onDownload={handleDownloadLibraryFile}
               onOpenDispatch={handleOpenDispatch}
             />
           </>

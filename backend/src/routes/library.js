@@ -80,6 +80,16 @@ libraryRouter.put("/:id", (req, res) => {
   return res.json(updated);
 });
 
+libraryRouter.post("/:id/move", (req, res) => {
+  const folder = req.body?.folder;
+  if (!folder) {
+    return res.status(400).json({ message: "folder is required" });
+  }
+  const updated = libraryService.update(req.params.id, { folder });
+  if (!updated) return res.status(404).json({ message: "File not found" });
+  return res.json(updated);
+});
+
 libraryRouter.get("/:id/download", (req, res) => {
   const file = libraryService.getById(req.params.id);
   if (!file) return res.status(404).json({ message: "File not found" });
