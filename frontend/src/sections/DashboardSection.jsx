@@ -1,5 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
-import { PrinterDetailModal } from "../components/PrinterDetailModal";
+import { useEffect, useState } from "react";
 import { PrinterMobileCard } from "../components/PrinterMobileCard";
 import { PrinterRow } from "../components/PrinterRow";
 
@@ -14,11 +13,6 @@ export function DashboardSection({
 }) {
   const [selectedPrinterId, setSelectedPrinterId] = useState(null);
 
-  const selectedPrinter = useMemo(
-    () => printers.find((printer) => printer.id === selectedPrinterId) || null,
-    [printers, selectedPrinterId]
-  );
-
   useEffect(() => {
     if (!selectedPrinterId) return;
     if (!printers.some((printer) => printer.id === selectedPrinterId)) {
@@ -30,11 +24,23 @@ export function DashboardSection({
     <>
       <section className="grid gap-2 md:hidden">
         {printers.map((printer) => (
-          <PrinterMobileCard
-            key={printer.id}
-            printer={printer}
-            onOpen={() => setSelectedPrinterId(printer.id)}
-          />
+          <div key={printer.id} className="space-y-2">
+            <PrinterMobileCard
+              printer={{ ...printer, isExpanded: selectedPrinterId === printer.id }}
+              onOpen={() => setSelectedPrinterId((current) => (current === printer.id ? null : printer.id))}
+            />
+            {selectedPrinterId === printer.id && (
+              <PrinterRow
+                printer={printer}
+                onOpenConfig={() => onOpenConfig(printer)}
+                onToggleLight={() => onToggleLight(printer)}
+                onPowerAction={(action) => onPowerAction(printer, action)}
+                onRestartService={(target) => onRestartService(printer, target)}
+                onMarkReady={() => onMarkReady(printer)}
+                onOpenFloatingCamera={() => onOpenFloatingCamera(printer)}
+              />
+            )}
+          </div>
         ))}
       </section>
 
@@ -52,17 +58,6 @@ export function DashboardSection({
           />
         ))}
       </section>
-
-      <PrinterDetailModal
-        printer={selectedPrinter}
-        onClose={() => setSelectedPrinterId(null)}
-        onOpenConfig={() => selectedPrinter && onOpenConfig(selectedPrinter)}
-        onToggleLight={() => selectedPrinter && onToggleLight(selectedPrinter)}
-        onPowerAction={(action) => selectedPrinter && onPowerAction(selectedPrinter, action)}
-        onRestartService={(target) => selectedPrinter && onRestartService(selectedPrinter, target)}
-        onMarkReady={() => selectedPrinter && onMarkReady(selectedPrinter)}
-        onOpenFloatingCamera={() => selectedPrinter && onOpenFloatingCamera(selectedPrinter)}
-      />
     </>
   );
 }

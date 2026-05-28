@@ -10,6 +10,7 @@ const cleanJobName = (filename = "") => {
 
 export function PrinterMobileCard({ printer, onOpen }) {
   const jobTitle = cleanJobName(printer.telemetry.currentFile);
+  const isExpanded = printer.isExpanded;
 
   return (
     <button
@@ -17,7 +18,7 @@ export function PrinterMobileCard({ printer, onOpen }) {
       onClick={onOpen}
       className={`glass flex w-full flex-col gap-2 rounded-[22px] border p-3 text-left transition ${
         printer.powerState !== "on" ? "border-white/5 opacity-55 saturate-0" : "border-white/10"
-      }`}
+      } ${isExpanded ? "ring-1 ring-cyan-300/30" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -44,6 +45,10 @@ export function PrinterMobileCard({ printer, onOpen }) {
           <p className="uppercase tracking-[0.14em] text-slate-500">Termina</p>
           <p className="mt-1 font-display text-base text-cyan-200">{formatEta(printer.telemetry.remainingMinutes)}</p>
         </div>
+      </div>
+
+      <div className="pt-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+        {isExpanded ? "Ocultar detalle" : "Ver detalle"}
       </div>
     </button>
   );

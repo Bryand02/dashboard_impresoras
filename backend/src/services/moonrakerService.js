@@ -187,25 +187,63 @@ class MoonrakerService {
 
   async restartService(printer, target) {
     const baseUrl = this.normalizeBaseUrl(printer.moonrakerUrl);
-    const service = target === "moonraker" ? "moonraker" : "klipper";
-    try {
-      const result = await this.requestJson(`${baseUrl}/machine/services/restart?service=${service}`, {
-        method: "POST"
+    const restartMachineService = async (service) =>
+      this.requestJson(`${baseUrl}/machine/services/restart`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ service })
       });
-      return {
-        message: `Reinicio solicitado para ${service} en ${printer.name}.`,
-        result
-      };
-    } catch (error) {
-      if (service === "moonraker") {
+
+    if (target === "moonraker") {
+      try {
+        const result = await restartMachineService("moonraker");
         return {
-          message: `Reinicio solicitado para ${service} en ${printer.name}. La conexion puede cerrarse durante el reinicio.`,
+          message: `Reinicio solicitado para moonraker en ${printer.name}.`,
+          result
+        };
+      } catch (error) {
+        return {
+          message: `Reinicio solicitado para moonraker en ${printer.name}. La conexion puede cerrarse durante el reinicio.`,
           result: null,
           warning: error.message
         };
       }
-      throw error;
     }
+
+    const klipperRestartAttempts = [
+      {
+        label: "firmware_restart",
+        url: `${baseUrl}/printer/firmware_restart`
+      },
+      {
+        label: "printer_restart",
+        url: `${baseUrl}/printer/restart`
+      },
+      {
+        label: "service_restart",
+        run: () => restartMachineService("klipper")
+      }
+    ];
+
+    let lastError = null;
+    for (const attempt of klipperRestartAttempts) {
+      try {
+        const result = attempt.run
+          ? await attempt.run()
+          : await this.requestJson(attempt.url, { method: "POST" });
+        return {
+          message: `Reinicio solicitado para klipper en ${printer.name}.`,
+          mode: attempt.label,
+          result
+        };
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error(`No fue posible reiniciar klipper en ${printer.name}.`);
   }
 
   // Integracion real:

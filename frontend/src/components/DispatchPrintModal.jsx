@@ -15,12 +15,13 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
   if (!file || !preview) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/72 p-4">
-      <div className="glass w-full max-w-4xl rounded-[28px] border border-white/10 p-5 shadow-glow">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/82 p-3 sm:p-4">
+      <div className="mx-auto flex min-h-full w-full items-start justify-center py-3 sm:items-center">
+      <div className="glass w-full max-w-4xl rounded-[28px] border border-white/10 p-4 shadow-glow sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Despachar impresion</p>
-            <h2 className="mt-1 font-display text-3xl">{file.name}</h2>
+            <h2 className="mt-1 font-display text-2xl sm:text-3xl">{file.name}</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300">
             Cerrar
@@ -89,7 +90,7 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end">
+        <div className="mt-5 flex justify-end pb-2">
           <button
             type="button"
             disabled={!canConfirm}
@@ -106,6 +107,7 @@ export function DispatchPrintModal({ file, preview, onClose, onConfirm }) {
             Confirmar envio
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -454,20 +454,22 @@ function App() {
       <div className="mx-auto max-w-[2300px] space-y-4">
         <header className="glass rounded-[24px] border border-white/10 p-3 shadow-glow sm:p-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-2xl font-bold leading-none sm:text-3xl">Printer Hub</h1>
-                <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                  v{APP_VERSION}
-                </span>
-                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                  socketConnected
-                    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-                    : "border-amber-400/20 bg-amber-400/10 text-amber-200"
-                }`}>
-                  {socketConnected ? "Live" : "Reconectando"}
-                </span>
-                <div className="hidden items-center gap-2 lg:flex lg:pl-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 lg:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="font-display text-2xl font-bold leading-none sm:text-3xl">Printer Hub</h1>
+                  <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                    v{APP_VERSION}
+                  </span>
+                  <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                    socketConnected
+                      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                      : "border-amber-400/20 bg-amber-400/10 text-amber-200"
+                  }`}>
+                    {socketConnected ? "Live" : "Reconectando"}
+                  </span>
+                </div>
+                <div className="hidden items-center gap-2 lg:flex">
                   {navButtons.map(([id, label]) => (
                     <button
                       key={id}
@@ -499,7 +501,7 @@ function App() {
               <button
                 type="button"
                 onClick={() => setHeaderMenuOpen((current) => !current)}
-                className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950 px-3 text-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
+                className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-[#0d1219] px-3 text-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
               >
                 <span className="flex flex-col gap-1 sm:hidden">
                   <span className="h-0.5 w-4 rounded-full bg-current" />
@@ -510,7 +512,7 @@ function App() {
                 <span className="text-xs text-slate-500">{headerMenuOpen ? "⌃" : "⌄"}</span>
               </button>
               {headerMenuOpen && (
-                <div className="absolute right-0 top-14 z-40 w-[min(92vw,26rem)] overflow-hidden rounded-3xl border border-white/10 bg-slate-950 p-3 shadow-[0_24px_64px_rgba(0,0,0,0.55)]">
+                <div className="absolute right-0 top-14 z-[80] w-[min(92vw,26rem)] overflow-hidden rounded-3xl border border-white/10 bg-[#0a0d13] p-3 shadow-[0_24px_64px_rgba(0,0,0,0.72)]">
                   <div className="mb-3 flex flex-col gap-2">
                     <button
                       type="button"
@@ -520,20 +522,22 @@ function App() {
                       Agregar impresora
                     </button>
                   </div>
-                  <NotificationSetup
-                    compact
-                    permission={notificationState.permission}
-                    subscribed={notificationState.subscribed}
-                    busy={notificationState.busy}
-                    expanded={notificationState.expanded}
-                    preferences={notificationState.preferences}
-                    options={notificationState.options}
-                    onToggleExpanded={handleToggleNotificationPanel}
-                    onPreferenceChange={handlePreferenceChange}
-                    onEnable={handleEnableNotifications}
-                    onDisable={handleDisableNotifications}
-                    onTest={handleTestNotification}
-                  />
+                  <div className="rounded-3xl border border-white/10 bg-[#11161f] p-3">
+                    <NotificationSetup
+                      compact
+                      permission={notificationState.permission}
+                      subscribed={notificationState.subscribed}
+                      busy={notificationState.busy}
+                      expanded={notificationState.expanded}
+                      preferences={notificationState.preferences}
+                      options={notificationState.options}
+                      onToggleExpanded={handleToggleNotificationPanel}
+                      onPreferenceChange={handlePreferenceChange}
+                      onEnable={handleEnableNotifications}
+                      onDisable={handleDisableNotifications}
+                      onTest={handleTestNotification}
+                    />
+                  </div>
                 </div>
               )}
             </div>
