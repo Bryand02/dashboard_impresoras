@@ -478,20 +478,22 @@ function App() {
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Imprimiendo ahora</p>
                 <p className="mt-2 font-display text-4xl text-slate-100">{summary.printing}</p>
               </div>
-              <button
-                type="button"
-                onClick={handleManualRefresh}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
-              >
-                {isRefreshing ? "Actualizando..." : "Actualizar"}
-              </button>
-              <button
-                type="button"
-                onClick={handleAddPrinter}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
-              >
-                Agregar impresora
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
+                >
+                  {isRefreshing ? "Actualizando..." : "Actualizar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddPrinter}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
+                >
+                  Agregar impresora
+                </button>
+              </div>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
