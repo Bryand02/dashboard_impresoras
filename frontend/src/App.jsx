@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
 import { FloatingCameraWindow } from "./components/FloatingCameraWindow";
@@ -55,6 +55,7 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   const refreshNotificationState = useCallback(async () => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -184,6 +185,7 @@ function App() {
     });
     await reloadData();
     setActivityMessage(`Impresora ${name} agregada.`);
+    setHeaderMenuOpen(false);
   };
 
   const handleOpenConfig = (printer) => {
@@ -265,11 +267,6 @@ function App() {
     await reloadData();
     setActivityMessage(response.message || "No se pudo eliminar la carpeta.");
   };
-
-  const summary = useMemo(() => {
-    const printing = data.printers.filter((printer) => printer.state === "printing").length;
-    return { printing };
-  }, [data.printers]);
 
   const filteredLibrary = useMemo(() => {
     const term = libraryQuery.toLowerCase().trim();
@@ -447,60 +444,102 @@ function App() {
     })}`;
   }, [lastSyncedAt]);
 
+  const navButtons = [
+    ["dashboard", "Dashboard"],
+    ["library", "Biblioteca"]
+  ];
+
   return (
     <div className="panel-grid min-h-screen bg-grid px-3 py-3 text-slate-100 sm:px-4 xl:px-5">
       <div className="mx-auto max-w-[2300px] space-y-4">
-        <header className="glass rounded-[24px] border border-white/10 p-4 shadow-glow">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-3xl font-bold leading-none sm:text-4xl">Printer Hub</h1>
-                <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200">
+        <header className="glass rounded-[24px] border border-white/10 p-3 shadow-glow sm:p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-2xl font-bold leading-none sm:text-3xl">Printer Hub</h1>
+                <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
                   v{APP_VERSION}
                 </span>
-                <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
+                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
                   socketConnected
                     ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
                     : "border-amber-400/20 bg-amber-400/10 text-amber-200"
                 }`}>
                   {socketConnected ? "Live" : "Reconectando"}
                 </span>
+                <div className="hidden items-center gap-2 lg:flex lg:pl-3">
+                  {navButtons.map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setActiveView(id)}
+                      className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                        activeView === id ? "bg-white text-slate-950" : "border border-white/10 bg-white/5 text-slate-200"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleManualRefresh}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200"
+                  >
+                    {isRefreshing ? "Actualizando..." : "Actualizar"}
+                  </button>
+                </div>
               </div>
-              <p className="mt-2 text-sm text-slate-400">Seguimiento rapido de la flota y biblioteca unificada de G-codes.</p>
               <p className="mt-1 text-xs text-slate-500">
                 {syncStatusText}
                 {isRefreshing ? " · Actualizando..." : ` · Auto-refresh ${REFRESH_INTERVAL_MS / 1000}s`}
               </p>
-              {activityMessage && <p className="mt-2 text-xs text-slate-500">{activityMessage}</p>}
+              {activityMessage && <p className="mt-1 text-xs text-slate-500">{activityMessage}</p>}
             </div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-3xl border border-white/10 bg-white/5 px-5 py-4">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Imprimiendo ahora</p>
-                <p className="mt-2 font-display text-4xl text-slate-100">{summary.printing}</p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={handleManualRefresh}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
-                >
-                  {isRefreshing ? "Actualizando..." : "Actualizar"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddPrinter}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
-                >
-                  Agregar impresora
-                </button>
-              </div>
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setHeaderMenuOpen((current) => !current)}
+                className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950 px-3 text-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
+              >
+                <span className="flex flex-col gap-1 sm:hidden">
+                  <span className="h-0.5 w-4 rounded-full bg-current" />
+                  <span className="h-0.5 w-4 rounded-full bg-current" />
+                  <span className="h-0.5 w-4 rounded-full bg-current" />
+                </span>
+                <span className="hidden text-xs font-semibold uppercase tracking-[0.16em] sm:inline">Menu</span>
+                <span className="text-xs text-slate-500">{headerMenuOpen ? "⌃" : "⌄"}</span>
+              </button>
+              {headerMenuOpen && (
+                <div className="absolute right-0 top-14 z-40 w-[min(92vw,26rem)] overflow-hidden rounded-3xl border border-white/10 bg-slate-950 p-3 shadow-[0_24px_64px_rgba(0,0,0,0.55)]">
+                  <div className="mb-3 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddPrinter}
+                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
+                    >
+                      Agregar impresora
+                    </button>
+                  </div>
+                  <NotificationSetup
+                    compact
+                    permission={notificationState.permission}
+                    subscribed={notificationState.subscribed}
+                    busy={notificationState.busy}
+                    expanded={notificationState.expanded}
+                    preferences={notificationState.preferences}
+                    options={notificationState.options}
+                    onToggleExpanded={handleToggleNotificationPanel}
+                    onPreferenceChange={handlePreferenceChange}
+                    onEnable={handleEnableNotifications}
+                    onDisable={handleDisableNotifications}
+                    onTest={handleTestNotification}
+                  />
+                </div>
+              )}
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              ["dashboard", "Dashboard"],
-              ["library", "Biblioteca"]
-            ].map(([id, label]) => (
+          <div className="mt-3 flex flex-wrap items-center gap-2 lg:hidden">
+            {navButtons.map(([id, label]) => (
               <button
                 key={id}
                 type="button"
@@ -512,22 +551,15 @@ function App() {
                 {label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200"
+            >
+              {isRefreshing ? "Actualizando..." : "Actualizar"}
+            </button>
           </div>
         </header>
-
-        <NotificationSetup
-          permission={notificationState.permission}
-          subscribed={notificationState.subscribed}
-          busy={notificationState.busy}
-          expanded={notificationState.expanded}
-          preferences={notificationState.preferences}
-          options={notificationState.options}
-          onToggleExpanded={handleToggleNotificationPanel}
-          onPreferenceChange={handlePreferenceChange}
-          onEnable={handleEnableNotifications}
-          onDisable={handleDisableNotifications}
-          onTest={handleTestNotification}
-        />
 
         {activeView === "dashboard" && (
           <DashboardSection

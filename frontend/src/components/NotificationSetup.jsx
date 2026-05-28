@@ -1,4 +1,5 @@
 export function NotificationSetup({
+  compact = false,
   permission,
   subscribed,
   busy,
@@ -11,22 +12,28 @@ export function NotificationSetup({
   onDisable,
   onTest
 }) {
+  const containerClass = compact
+    ? "rounded-2xl border border-white/10 bg-slate-950 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+    : "glass rounded-[24px] border border-white/10 p-4 shadow-glow";
+
   return (
-    <section className="glass rounded-[24px] border border-white/10 p-4 shadow-glow">
+    <section className={containerClass}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">iPhone</p>
-            <button
-              type="button"
-              onClick={onToggleExpanded}
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300"
-            >
-              Notificaciones
-            </button>
+            {!compact && (
+              <button
+                type="button"
+                onClick={onToggleExpanded}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300"
+              >
+                Notificaciones
+              </button>
+            )}
           </div>
-          <h2 className="mt-2 font-display text-2xl">Notificaciones y widget</h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <h2 className={`mt-2 font-display ${compact ? "text-lg" : "text-2xl"}`}>Notificaciones y widget</h2>
+          <p className={`mt-2 ${compact ? "text-xs" : "text-sm"} text-slate-400`}>
             Activa el push en tu iPhone y elige exactamente que eventos quieres recibir: inicio, pausa, finalizacion, energia y cambios de estado.
           </p>
           <p className="mt-2 text-xs text-slate-500">
@@ -67,10 +74,10 @@ export function NotificationSetup({
         </div>
       </div>
 
-      {expanded && subscribed && (
-        <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+      {(expanded || compact) && subscribed && (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/90 p-4">
           <div className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-500">Checklist de avisos</div>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <div className={`grid gap-2 ${compact ? "md:grid-cols-1" : "md:grid-cols-2 xl:grid-cols-3"}`}>
             {options.map((option) => (
               <label
                 key={option.key}
@@ -89,7 +96,7 @@ export function NotificationSetup({
         </div>
       )}
 
-      <div className="mt-3 text-xs text-slate-500">
+      <div className={`mt-3 text-xs text-slate-500 ${compact ? "max-w-md" : ""}`}>
         En iPhone: Safari - Compartir - Agregar a pantalla de inicio - abrir la app instalada - permitir notificaciones.
       </div>
     </section>

@@ -1,8 +1,8 @@
-import { CameraPreview } from "./CameraPreview";
+﻿import { CameraPreview } from "./CameraPreview";
 import { HomeAssistantPowerButton } from "./HomeAssistantPowerButton";
 import { PrinterModelPreview } from "./PrinterModelPreview";
 import { PrinterStatusBadge } from "./PrinterStatusBadge";
-import { PrinterTimeDisplay } from "./PrinterTimeDisplay";
+import { PrinterTimeDisplay, formatEta } from "./PrinterTimeDisplay";
 import { ProgressBar } from "./ProgressBar";
 import { TemperatureDisplay } from "./TemperatureDisplay";
 
@@ -36,7 +36,7 @@ export function PrinterRow({
 
   return (
     <article
-      className={`glass animate-rise flex h-full min-h-[980px] flex-col gap-3 rounded-[24px] border p-3 shadow-glow transition ${
+      className={`glass animate-rise flex h-full min-h-[680px] flex-col gap-3 rounded-[24px] border p-3 shadow-glow transition ${
         isPoweredOff
           ? "border-white/5 opacity-55 saturate-0"
           : "border-white/10 opacity-100"
@@ -45,7 +45,7 @@ export function PrinterRow({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Printer</p>
-          <h3 className="mt-1 font-display text-[2rem] font-semibold leading-none">{printer.name}</h3>
+          <h3 className="mt-1 font-display text-[1.7rem] font-semibold leading-none">{printer.name}</h3>
           <p className="mt-1 text-xs text-slate-400">{cleanProfile(printer)}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -65,13 +65,14 @@ export function PrinterRow({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <CameraPreview printer={printer} onOpenFloating={onOpenFloatingCamera} />
+      <CameraPreview printer={printer} onOpenFloating={onOpenFloatingCamera} />
+
+      <div className="grid grid-cols-2 gap-2">
         {canMarkReady && (
           <button
             type="button"
             onClick={onMarkReady}
-            className="w-full rounded-2xl border border-sky-300/30 bg-sky-400/10 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-sky-200"
+            className="col-span-2 w-full rounded-2xl border border-sky-300/30 bg-sky-400/10 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-sky-200"
           >
             Marcar lista
           </button>
@@ -81,7 +82,7 @@ export function PrinterRow({
             type="button"
             disabled={isPrinting}
             onClick={onToggleLight}
-            className={`w-full rounded-2xl border px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] ${
+            className={`col-span-2 w-full rounded-2xl border px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] ${
               printer.lightState === "on"
                 ? "border-amber-300/40 bg-amber-400/15 text-amber-200"
                 : "border-white/10 bg-white/5 text-slate-200"
@@ -93,65 +94,55 @@ export function PrinterRow({
           <button
             type="button"
             disabled
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 opacity-70"
+            className="col-span-2 w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 opacity-70"
           >
             Sin lampara
           </button>
         )}
-        <PrinterTimeDisplay
-          elapsed={printer.telemetry.elapsedMinutes}
-          remaining={printer.telemetry.remainingMinutes}
-          total={printer.telemetry.estimatedMinutes}
-        />
       </div>
 
       <div className="rounded-3xl border border-white/10 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Trabajo activo</p>
-        <div className="mt-2 h-[52px] overflow-hidden">
-          <p className="text-[13px] font-semibold leading-5 text-slate-100">{jobTitle}</p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Trabajo activo</p>
+            <div className="mt-2 h-[40px] overflow-hidden">
+              <p className="text-[13px] font-semibold leading-5 text-slate-100">{jobTitle}</p>
+            </div>
+          </div>
+          <div className="ml-2 rounded-2xl border border-cyan-300/15 bg-cyan-400/10 px-2 py-1 text-right">
+            <p className="text-[9px] uppercase tracking-[0.16em] text-cyan-200">Termina</p>
+            <p className="mt-1 font-display text-sm text-cyan-100">{formatEta(printer.telemetry.remainingMinutes)}</p>
+          </div>
         </div>
         <div className="mt-3">
           <ProgressBar value={printer.telemetry.progress} />
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Velocidad</p>
-            <p className="mt-2 font-display text-2xl">{Math.round(printer.telemetry.velocity)}</p>
-            <p className="text-[10px] text-slate-500">mm/s</p>
-          </div>
-          <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Progreso</p>
-            <p className="mt-2 font-display text-2xl">{Math.round(printer.telemetry.progress)}%</p>
-            <p className="text-[10px] text-slate-500">actual</p>
-          </div>
+      </div>
+
+      <PrinterModelPreview fileName={jobTitle} image={printer.telemetry.thumbnailUrl || printer.image} />
+
+      <PrinterTimeDisplay
+        elapsed={printer.telemetry.elapsedMinutes}
+        remaining={printer.telemetry.remainingMinutes}
+        total={printer.telemetry.estimatedMinutes}
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-2.5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-slate-500">Velocidad</p>
+          <p className="mt-1 font-display text-lg text-slate-100">{Math.round(printer.telemetry.velocity)}</p>
+          <p className="text-[10px] text-slate-500">mm/s</p>
+        </div>
+        <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-2.5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-slate-500">Progreso</p>
+          <p className="mt-1 font-display text-lg text-emerald-200">{Math.round(printer.telemetry.progress)}%</p>
+          <p className="text-[10px] text-slate-500">actual</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <TemperatureDisplay label="Nozzle" actual={printer.telemetry.nozzle.actual} target={printer.telemetry.nozzle.target} />
         <TemperatureDisplay label="Bed" actual={printer.telemetry.bed.actual} target={printer.telemetry.bed.target} />
-      </div>
-
-      <PrinterModelPreview fileName={jobTitle} image={printer.telemetry.thumbnailUrl || printer.image} />
-
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-3">
-        <div className="flex flex-wrap gap-1.5">
-          {printer.materials.map((material) => (
-            <span key={material} className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-slate-200">
-              {material}
-            </span>
-          ))}
-        </div>
-        <div className="mt-4 space-y-3 text-xs text-slate-300">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Volumen</p>
-            <p className="mt-1">{printer.volume.x} x {printer.volume.y} x {printer.volume.z}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Moonraker</p>
-            <p className="mt-1 truncate">{printer.moonrakerUrl}</p>
-          </div>
-        </div>
       </div>
 
       <div className="mt-auto">

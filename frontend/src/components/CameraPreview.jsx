@@ -52,7 +52,7 @@ export function CameraPreview({ printer, onOpenFloating }) {
 
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/65">
-      <div ref={frameRef} className="relative h-48 overflow-hidden bg-black">
+      <div ref={frameRef} className="relative h-40 overflow-hidden bg-black">
         {showWebRtc ? (
           <iframe
             src={go2RtcSource.webRtcUrl}
