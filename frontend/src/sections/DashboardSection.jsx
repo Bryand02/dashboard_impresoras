@@ -9,7 +9,8 @@ export function DashboardSection({
   onPowerAction,
   onRestartService,
   onMarkReady,
-  onOpenFloatingCamera
+  onOpenFloatingCamera,
+  onOpenFullscreenCamera
 }) {
   const [selectedPrinterId, setSelectedPrinterId] = useState(null);
 
@@ -38,6 +39,7 @@ export function DashboardSection({
                 onRestartService={(target) => onRestartService(printer, target)}
                 onMarkReady={() => onMarkReady(printer)}
                 onOpenFloatingCamera={() => onOpenFloatingCamera(printer)}
+                onOpenFullscreenCamera={() => onOpenFullscreenCamera(printer)}
               />
             )}
           </div>
@@ -55,6 +57,7 @@ export function DashboardSection({
             onRestartService={(target) => onRestartService(printer, target)}
             onMarkReady={() => onMarkReady(printer)}
             onOpenFloatingCamera={() => onOpenFloatingCamera(printer)}
+            onOpenFullscreenCamera={() => onOpenFullscreenCamera(printer)}
           />
         ))}
       </section>

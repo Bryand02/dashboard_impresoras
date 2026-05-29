@@ -26,7 +26,8 @@ export function PrinterRow({
   onPowerAction,
   onRestartService,
   onMarkReady,
-  onOpenFloatingCamera
+  onOpenFloatingCamera,
+  onOpenFullscreenCamera
 }) {
   const jobTitle = cleanJobName(printer.telemetry.currentFile);
   const isPoweredOff = printer.powerState !== "on";
@@ -65,7 +66,11 @@ export function PrinterRow({
         </div>
       </div>
 
-      <CameraPreview printer={printer} onOpenFloating={onOpenFloatingCamera} />
+      <CameraPreview
+        printer={printer}
+        onOpenFloating={onOpenFloatingCamera}
+        onOpenFullscreen={onOpenFullscreenCamera}
+      />
 
       <div className="space-y-2 md:hidden">
         {canRestartServices && (

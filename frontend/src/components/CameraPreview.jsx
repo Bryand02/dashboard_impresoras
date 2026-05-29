@@ -1,19 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-
-const isWebUrl = (url = "") => /^https?:\/\//i.test(url);
-
-const getGo2RtcSource = (cameraUrl) => {
-  try {
-    const parsed = new URL(cameraUrl);
-    const src = parsed.searchParams.get("src");
-    if (!src) return null;
-    return {
-      webRtcUrl: `${parsed.origin}/webrtc.html?src=${encodeURIComponent(src)}&media=video`
-    };
-  } catch {
-    return null;
-  }
-};
+import { useMemo, useState } from "react";
+import { getGo2RtcSource, isWebUrl } from "./cameraUtils";
 
 const iconButtonClass =
   "flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/60 text-slate-100 backdrop-blur transition hover:border-white/25 hover:bg-black/75";
@@ -38,21 +24,15 @@ function FloatingIcon() {
   );
 }
 
-export function CameraPreview({ printer, onOpenFloating }) {
+export function CameraPreview({ printer, onOpenFloating, onOpenFullscreen }) {
   const cameraUrl = printer.cameraUrl || "";
-  const frameRef = useRef(null);
   const [embedFailed, setEmbedFailed] = useState(false);
   const go2RtcSource = useMemo(() => (isWebUrl(cameraUrl) ? getGo2RtcSource(cameraUrl) : null), [cameraUrl]);
   const showWebRtc = Boolean(go2RtcSource?.webRtcUrl) && !embedFailed;
 
-  const handleFullscreen = async () => {
-    if (!frameRef.current?.requestFullscreen) return;
-    await frameRef.current.requestFullscreen();
-  };
-
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/65">
-      <div ref={frameRef} className="relative h-40 overflow-hidden bg-black">
+      <div className="relative h-40 overflow-hidden bg-black">
         {showWebRtc ? (
           <iframe
             src={go2RtcSource.webRtcUrl}
@@ -94,7 +74,7 @@ export function CameraPreview({ printer, onOpenFloating }) {
             <button type="button" onClick={onOpenFloating} className={iconButtonClass} aria-label="Abrir mini ventana flotante">
               <FloatingIcon />
             </button>
-            <button type="button" onClick={handleFullscreen} className={iconButtonClass} aria-label="Pantalla completa">
+            <button type="button" onClick={onOpenFullscreen} className={iconButtonClass} aria-label="Pantalla completa">
               <FullscreenIcon />
             </button>
           </div>

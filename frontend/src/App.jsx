@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
+import { CameraFullscreenWall } from "./components/CameraFullscreenWall";
 import { FloatingCameraWindow } from "./components/FloatingCameraWindow";
 import { NotificationSetup } from "./components/NotificationSetup";
 import { PrinterConfigModal } from "./components/PrinterConfigModal";
@@ -44,6 +45,7 @@ function App() {
   const [dispatchState, setDispatchState] = useState({ file: null, preview: null });
   const [activityMessage, setActivityMessage] = useState("");
   const [floatingCamera, setFloatingCamera] = useState(null);
+  const [fullscreenCameraPrinterId, setFullscreenCameraPrinterId] = useState(null);
   const [notificationState, setNotificationState] = useState({
     permission: typeof Notification !== "undefined" ? Notification.permission : "default",
     subscribed: false,
@@ -346,6 +348,10 @@ function App() {
     setFloatingCamera(printer);
   };
 
+  const handleOpenFullscreenCamera = (printer) => {
+    setFullscreenCameraPrinterId(printer.id);
+  };
+
   const handleEnableNotifications = async () => {
     try {
       setNotificationState((current) => ({ ...current, busy: true }));
@@ -587,6 +593,7 @@ function App() {
             onRestartService={handleRestartService}
             onMarkReady={handleMarkReady}
             onOpenFloatingCamera={handleOpenFloatingCamera}
+            onOpenFullscreenCamera={handleOpenFullscreenCamera}
           />
         )}
 
@@ -634,6 +641,14 @@ function App() {
           <FloatingCameraWindow
             printer={floatingCamera}
             onClose={() => setFloatingCamera(null)}
+          />
+        )}
+        {fullscreenCameraPrinterId && (
+          <CameraFullscreenWall
+            printers={data.printers}
+            activePrinterId={fullscreenCameraPrinterId}
+            onSelectPrinter={setFullscreenCameraPrinterId}
+            onClose={() => setFullscreenCameraPrinterId(null)}
           />
         )}
       </div>
