@@ -544,8 +544,9 @@ function App() {
               onClick={() => setHeaderMenuOpen(false)}
               className="absolute inset-0 h-full w-full bg-black/35"
             />
-            <div className="pointer-events-none absolute inset-0 flex items-start justify-end p-3 sm:p-4">
-              <div className="pointer-events-auto mt-14 w-[min(92vw,26rem)] overflow-hidden rounded-3xl border border-white/10 bg-[#080b11] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.82)]">
+            <div className="pointer-events-none absolute inset-0 overflow-y-auto p-3 sm:p-4">
+              <div className="flex min-h-full items-start justify-end">
+              <div className="pointer-events-auto mt-14 max-h-[calc(100vh-5.5rem)] w-[min(92vw,26rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#080b11] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.82)] overscroll-contain">
                 <div className="mb-3 flex flex-col gap-2">
                   <button
                     type="button"
@@ -571,6 +572,7 @@ function App() {
                     onTest={handleTestNotification}
                   />
                 </div>
+              </div>
               </div>
             </div>
           </div>

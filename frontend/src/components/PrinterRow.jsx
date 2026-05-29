@@ -67,6 +67,38 @@ export function PrinterRow({
 
       <CameraPreview printer={printer} onOpenFloating={onOpenFloatingCamera} />
 
+      <div className="space-y-2 md:hidden">
+        {canRestartServices && (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onRestartService("klipper")}
+              className="rounded-2xl border border-sky-300/25 bg-sky-400/10 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-100"
+            >
+              Reiniciar Klipper
+            </button>
+            <button
+              type="button"
+              onClick={() => onRestartService("moonraker")}
+              className="rounded-2xl border border-violet-300/25 bg-violet-400/10 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-100"
+            >
+              Reiniciar Moonraker
+            </button>
+          </div>
+        )}
+        {printer.powerEnabled ? (
+          <HomeAssistantPowerButton powerState={printer.powerState} onAction={onPowerAction} disabled={isPrinting} />
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 opacity-70"
+          >
+            Sin control HA
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         {canMarkReady && (
           <button
@@ -145,7 +177,7 @@ export function PrinterRow({
         <TemperatureDisplay label="Bed" actual={printer.telemetry.bed.actual} target={printer.telemetry.bed.target} />
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-auto hidden md:block">
         {canRestartServices && (
           <div className="mb-2 grid grid-cols-2 gap-2">
             <button
