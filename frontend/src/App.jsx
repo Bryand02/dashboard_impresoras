@@ -497,11 +497,11 @@ function App() {
               </p>
               {activityMessage && <p className="mt-1 text-xs text-slate-500">{activityMessage}</p>}
             </div>
-            <div className="relative shrink-0">
+            <div className="relative z-[90] shrink-0 isolate">
               <button
                 type="button"
                 onClick={() => setHeaderMenuOpen((current) => !current)}
-                className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-[#0d1219] px-3 text-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
+                className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-[#0d1219] px-3 text-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.45)] backdrop-blur-none"
               >
                 <span className="flex flex-col gap-1 sm:hidden">
                   <span className="h-0.5 w-4 rounded-full bg-current" />
@@ -511,35 +511,6 @@ function App() {
                 <span className="hidden text-xs font-semibold uppercase tracking-[0.16em] sm:inline">Menu</span>
                 <span className="text-xs text-slate-500">{headerMenuOpen ? "⌃" : "⌄"}</span>
               </button>
-              {headerMenuOpen && (
-                <div className="absolute right-0 top-14 z-[80] w-[min(92vw,26rem)] overflow-hidden rounded-3xl border border-white/10 bg-[#0a0d13] p-3 shadow-[0_24px_64px_rgba(0,0,0,0.72)]">
-                  <div className="mb-3 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={handleAddPrinter}
-                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
-                    >
-                      Agregar impresora
-                    </button>
-                  </div>
-                  <div className="rounded-3xl border border-white/10 bg-[#11161f] p-3">
-                    <NotificationSetup
-                      compact
-                      permission={notificationState.permission}
-                      subscribed={notificationState.subscribed}
-                      busy={notificationState.busy}
-                      expanded={notificationState.expanded}
-                      preferences={notificationState.preferences}
-                      options={notificationState.options}
-                      onToggleExpanded={handleToggleNotificationPanel}
-                      onPreferenceChange={handlePreferenceChange}
-                      onEnable={handleEnableNotifications}
-                      onDisable={handleDisableNotifications}
-                      onTest={handleTestNotification}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 lg:hidden">
@@ -564,6 +535,46 @@ function App() {
             </button>
           </div>
         </header>
+
+        {headerMenuOpen && (
+          <div className="fixed inset-0 z-[140]">
+            <button
+              type="button"
+              aria-label="Cerrar menu"
+              onClick={() => setHeaderMenuOpen(false)}
+              className="absolute inset-0 h-full w-full bg-black/35"
+            />
+            <div className="pointer-events-none absolute inset-0 flex items-start justify-end p-3 sm:p-4">
+              <div className="pointer-events-auto mt-14 w-[min(92vw,26rem)] overflow-hidden rounded-3xl border border-white/10 bg-[#080b11] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.82)]">
+                <div className="mb-3 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddPrinter}
+                    className="rounded-2xl border border-white/10 bg-[#11161f] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
+                  >
+                    Agregar impresora
+                  </button>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-[#0f141c] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                  <NotificationSetup
+                    compact
+                    permission={notificationState.permission}
+                    subscribed={notificationState.subscribed}
+                    busy={notificationState.busy}
+                    expanded={notificationState.expanded}
+                    preferences={notificationState.preferences}
+                    options={notificationState.options}
+                    onToggleExpanded={handleToggleNotificationPanel}
+                    onPreferenceChange={handlePreferenceChange}
+                    onEnable={handleEnableNotifications}
+                    onDisable={handleDisableNotifications}
+                    onTest={handleTestNotification}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeView === "dashboard" && (
           <DashboardSection

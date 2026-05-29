@@ -13,7 +13,7 @@ export function NotificationSetup({
   onTest
 }) {
   const containerClass = compact
-    ? "rounded-2xl border border-white/10 bg-[#11161f] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+    ? "rounded-2xl border border-white/10 bg-[#0f141c] p-3 shadow-[0_12px_40px_rgba(0,0,0,0.42)] backdrop-blur-none"
     : "glass rounded-[24px] border border-white/10 p-4 shadow-glow";
 
   return (
@@ -75,7 +75,7 @@ export function NotificationSetup({
       </div>
 
       {(expanded || compact) && subscribed && (
-        <div className="mt-4 rounded-2xl border border-white/10 bg-[#0d1219] p-4">
+        <div className="mt-4 rounded-2xl border border-white/10 bg-[#0b1017] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           <div className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-500">Checklist de avisos</div>
           <div className={`grid gap-2 ${compact ? "md:grid-cols-1" : "md:grid-cols-2 xl:grid-cols-3"}`}>
             {options.map((option) => (
