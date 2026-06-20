@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { getGo2RtcSource, isWebUrl } from "./cameraUtils";
 import { moveStreamingPreset } from "../services/api";
 import { loadStreamingCameras } from "./streamingConfig";
 import { ShareStreamModal } from "./ShareStreamModal";
+import { ProgressBar } from "./ProgressBar";
 
 function buildEmbedUrl(cameraUrl) {
   if (!isWebUrl(cameraUrl)) return "";
@@ -176,6 +177,53 @@ function CameraCard({ camera, selectedPresetId, movingPresetId, onSelectPreset, 
   );
 }
 
+function PrinterProgressStrip({ printers = [] }) {
+  if (!printers.length) return null;
+
+  return (
+    <section className="glass rounded-[24px] border border-white/10 p-3 shadow-glow">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Impresoras</p>
+          <p className="mt-1 text-xs text-slate-500">Progreso rapido de las 5 maquinas.</p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {printers.map((printer) => {
+          const progressValue = Number(printer.telemetry?.progress || 0);
+
+          return (
+            <article
+              key={printer.id}
+              className="rounded-[20px] border border-white/10 bg-[#0b1017] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            >
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-100">{printer.name}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                    {printer.state}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-emerald-200">
+                  {Math.round(progressValue)}%
+                </span>
+              </div>
+
+              <ProgressBar value={progressValue} compact />
+
+              <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+                <span className="truncate">{printer.activeJob?.name || "Sin trabajo activo"}</span>
+                <span className="shrink-0">{printer.telemetry?.remaining || "0m"}</span>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function StreamingFullscreenWall({
   cameras,
   activeCameraId,
@@ -272,7 +320,7 @@ function StreamingFullscreenWall({
   );
 }
 
-export function StreamingSection({ configVersion = 0 }) {
+export function StreamingSection({ configVersion = 0, printers = [] }) {
   const [fullscreenCameraId, setFullscreenCameraId] = useState(null);
   const [shareTarget, setShareTarget] = useState(null);
   const [movingCameraId, setMovingCameraId] = useState("");
@@ -380,6 +428,8 @@ export function StreamingSection({ configVersion = 0 }) {
         ))}
       </section>
 
+      <PrinterProgressStrip printers={printers} />
+
       {fullscreenCameraId && availableFullscreenCameras.length > 0 && (
         <StreamingFullscreenWall
           cameras={cameras}
@@ -402,3 +452,4 @@ export function StreamingSection({ configVersion = 0 }) {
     </>
   );
 }
+

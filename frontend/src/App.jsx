@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+ï»¿import { useCallback, useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
 import { NotificationSetup } from "./components/NotificationSetup";
@@ -491,7 +491,7 @@ function App() {
               </div>
               <p className="mt-1 text-xs text-slate-500">
                 {syncStatusText}
-                {isRefreshing ? " · Actualizando..." : ` · Auto-refresh ${REFRESH_INTERVAL_MS / 1000}s`}
+                {isRefreshing ? " Â· Actualizando..." : ` Â· Auto-refresh ${REFRESH_INTERVAL_MS / 1000}s`}
               </p>
               {activityMessage && <p className="mt-1 text-xs text-slate-500">{activityMessage}</p>}
             </div>
@@ -626,7 +626,12 @@ function App() {
           </>
         )}
 
-        {activeView === "streaming" && <StreamingSection configVersion={streamingConfigVersion} />}
+        {activeView === "streaming" && (
+          <StreamingSection
+            configVersion={streamingConfigVersion}
+            printers={data.printers}
+          />
+        )}
 
         <PrinterConfigModal
           printer={configPrinter}
@@ -653,3 +658,4 @@ function App() {
 }
 
 export default App;
+
