@@ -16,6 +16,18 @@ const getWsUrl = () => {
 const API_URL = getApiUrl();
 const WS_URL = getWsUrl();
 
+const parseResponse = async (response) => {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(text || "La respuesta del servidor no fue valida.");
+  }
+  throw new Error("El backend no devolvio JSON. Verifica que la API este actualizada.");
+};
+
 export const fetchBootstrap = async () => {
   const response = await fetch(`${API_URL}/system/bootstrap`, {
     cache: "no-store"
@@ -243,4 +255,42 @@ export const createSocket = (onMessage) => {
     onMessage(data);
   });
   return socket;
+};
+
+export const createShareLink = async (payload) => {
+  const response = await fetch(`${API_URL}/share-links`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(data.message || "No fue posible crear el enlace temporal.");
+  }
+  return data;
+};
+
+export const revokeShareLink = async (token) => {
+  const response = await fetch(`${API_URL}/share-links/${token}/revoke`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(data.message || "No fue posible revocar el enlace.");
+  }
+  return data;
+};
+
+export const moveStreamingPreset = async (entityId, option) => {
+  const response = await fetch(`${API_URL}/streaming/preset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entityId, option })
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(data.message || "No fue posible mover la camara.");
+  }
+  return data;
 };

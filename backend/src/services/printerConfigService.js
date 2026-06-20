@@ -4,6 +4,10 @@ import { slugify } from "../utils/formatters.js";
 class PrinterConfigService {
   constructor() {
     this.printers = structuredClone(printers);
+    const ender4 = this.printers.find((printer) => printer.id === "ender-4");
+    if (ender4) {
+      ender4.cameraUrl = "https://cam1-gestor3d.platia.com.co/stream.html?src=cam1&mode=mse";
+    }
   }
 
   list() {

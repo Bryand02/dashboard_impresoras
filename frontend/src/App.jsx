@@ -1,10 +1,10 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DispatchPrintModal } from "./components/DispatchPrintModal";
 import { FileLibrary } from "./components/FileLibrary";
-import { CameraFullscreenWall } from "./components/CameraFullscreenWall";
-import { FloatingCameraWindow } from "./components/FloatingCameraWindow";
 import { NotificationSetup } from "./components/NotificationSetup";
 import { PrinterConfigModal } from "./components/PrinterConfigModal";
+import { StreamingConfigModal } from "./components/StreamingConfigModal";
+import { StreamingSection } from "./components/StreamingSection";
 import { APP_VERSION } from "./config/version";
 import { fallbackData } from "./data/fallbackData";
 import { DashboardSection } from "./sections/DashboardSection";
@@ -39,13 +39,13 @@ const REFRESH_INTERVAL_MS = 8000;
 function App() {
   const [data, setData] = useState(fallbackData);
   const [configPrinter, setConfigPrinter] = useState(null);
+  const [streamingConfigOpen, setStreamingConfigOpen] = useState(false);
+  const [streamingConfigVersion, setStreamingConfigVersion] = useState(0);
   const [activeView, setActiveView] = useState("dashboard");
   const [libraryQuery, setLibraryQuery] = useState("");
   const [activeLibraryFolder, setActiveLibraryFolder] = useState("General");
   const [dispatchState, setDispatchState] = useState({ file: null, preview: null });
   const [activityMessage, setActivityMessage] = useState("");
-  const [floatingCamera, setFloatingCamera] = useState(null);
-  const [fullscreenCameraPrinterId, setFullscreenCameraPrinterId] = useState(null);
   const [notificationState, setNotificationState] = useState({
     permission: typeof Notification !== "undefined" ? Notification.permission : "default",
     subscribed: false,
@@ -138,10 +138,9 @@ function App() {
     };
 
     document.title = `Printer Hub v${APP_VERSION}`;
-    reloadData()
-      .catch(() => {
-        setData(fallbackData);
-      });
+    reloadData().catch(() => {
+      setData(fallbackData);
+    });
     refreshNotificationState().catch(() => {});
     connectSocket();
 
@@ -239,9 +238,9 @@ function App() {
     const response = await restartPrinterService(printer.id, target);
     await reloadData();
     setActivityMessage(
-        response.message
-          ? response.message
-          : `${target === "moonraker" ? "Moonraker" : "Klipper"} reiniciado en ${printer.name}.`
+      response.message
+        ? response.message
+        : `${target === "moonraker" ? "Moonraker" : "Klipper"} reiniciado en ${printer.name}.`
     );
   };
 
@@ -344,14 +343,6 @@ function App() {
     setDispatchState({ file: null, preview: null });
   };
 
-  const handleOpenFloatingCamera = (printer) => {
-    setFloatingCamera(printer);
-  };
-
-  const handleOpenFullscreenCamera = (printer) => {
-    setFullscreenCameraPrinterId(printer.id);
-  };
-
   const handleEnableNotifications = async () => {
     try {
       setNotificationState((current) => ({ ...current, busy: true }));
@@ -452,7 +443,8 @@ function App() {
 
   const navButtons = [
     ["dashboard", "Dashboard"],
-    ["library", "Biblioteca"]
+    ["library", "Biblioteca"],
+    ["streaming", "Streaming"]
   ];
 
   return (
@@ -499,7 +491,7 @@ function App() {
               </div>
               <p className="mt-1 text-xs text-slate-500">
                 {syncStatusText}
-                {isRefreshing ? " · Actualizando..." : ` · Auto-refresh ${REFRESH_INTERVAL_MS / 1000}s`}
+                {isRefreshing ? " � Actualizando..." : ` � Auto-refresh ${REFRESH_INTERVAL_MS / 1000}s`}
               </p>
               {activityMessage && <p className="mt-1 text-xs text-slate-500">{activityMessage}</p>}
             </div>
@@ -515,7 +507,7 @@ function App() {
                   <span className="h-0.5 w-4 rounded-full bg-current" />
                 </span>
                 <span className="hidden text-xs font-semibold uppercase tracking-[0.16em] sm:inline">Menu</span>
-                <span className="text-xs text-slate-500">{headerMenuOpen ? "⌃" : "⌄"}</span>
+                <span className="text-xs text-slate-500">{headerMenuOpen ? "^" : "?"}</span>
               </button>
             </div>
           </div>
@@ -552,33 +544,43 @@ function App() {
             />
             <div className="pointer-events-none absolute inset-0 overflow-y-auto p-3 sm:p-4">
               <div className="flex min-h-full items-start justify-end">
-              <div className="pointer-events-auto mt-14 max-h-[calc(100vh-5.5rem)] w-[min(92vw,26rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#080b11] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.82)] overscroll-contain">
-                <div className="mb-3 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={handleAddPrinter}
-                    className="rounded-2xl border border-white/10 bg-[#11161f] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
-                  >
-                    Agregar impresora
-                  </button>
+                <div className="pointer-events-auto mt-14 max-h-[calc(100vh-5.5rem)] w-[min(92vw,26rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#080b11] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.82)] overscroll-contain">
+                  <div className="mb-3 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStreamingConfigOpen(true);
+                        setHeaderMenuOpen(false);
+                      }}
+                      className="rounded-2xl border border-white/10 bg-[#11161f] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
+                    >
+                      Configuracion
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddPrinter}
+                      className="rounded-2xl border border-white/10 bg-[#11161f] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-200"
+                    >
+                      Agregar impresora
+                    </button>
+                  </div>
+                  <div className="rounded-3xl border border-white/10 bg-[#0f141c] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                    <NotificationSetup
+                      compact
+                      permission={notificationState.permission}
+                      subscribed={notificationState.subscribed}
+                      busy={notificationState.busy}
+                      expanded={notificationState.expanded}
+                      preferences={notificationState.preferences}
+                      options={notificationState.options}
+                      onToggleExpanded={handleToggleNotificationPanel}
+                      onPreferenceChange={handlePreferenceChange}
+                      onEnable={handleEnableNotifications}
+                      onDisable={handleDisableNotifications}
+                      onTest={handleTestNotification}
+                    />
+                  </div>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-[#0f141c] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                  <NotificationSetup
-                    compact
-                    permission={notificationState.permission}
-                    subscribed={notificationState.subscribed}
-                    busy={notificationState.busy}
-                    expanded={notificationState.expanded}
-                    preferences={notificationState.preferences}
-                    options={notificationState.options}
-                    onToggleExpanded={handleToggleNotificationPanel}
-                    onPreferenceChange={handlePreferenceChange}
-                    onEnable={handleEnableNotifications}
-                    onDisable={handleDisableNotifications}
-                    onTest={handleTestNotification}
-                  />
-                </div>
-              </div>
               </div>
             </div>
           </div>
@@ -592,14 +594,12 @@ function App() {
             onPowerAction={handlePowerAction}
             onRestartService={handleRestartService}
             onMarkReady={handleMarkReady}
-            onOpenFloatingCamera={handleOpenFloatingCamera}
-            onOpenFullscreenCamera={handleOpenFullscreenCamera}
           />
         )}
 
         {activeView === "library" && (
           <>
-              <input
+            <input
               id="library-file-input"
               type="file"
               accept=".gcode,.gc,.txt"
@@ -626,10 +626,20 @@ function App() {
           </>
         )}
 
+        {activeView === "streaming" && <StreamingSection configVersion={streamingConfigVersion} />}
+
         <PrinterConfigModal
           printer={configPrinter}
           onClose={() => setConfigPrinter(null)}
           onSave={handleSaveConfig}
+        />
+        <StreamingConfigModal
+          open={streamingConfigOpen}
+          onClose={() => setStreamingConfigOpen(false)}
+          onSaved={() => {
+            setStreamingConfigVersion((current) => current + 1);
+            setActivityMessage("Configuracion de streaming actualizada.");
+          }}
         />
         <DispatchPrintModal
           file={dispatchState.file}
@@ -637,20 +647,6 @@ function App() {
           onClose={() => setDispatchState({ file: null, preview: null })}
           onConfirm={handleConfirmDispatch}
         />
-        {floatingCamera && (
-          <FloatingCameraWindow
-            printer={floatingCamera}
-            onClose={() => setFloatingCamera(null)}
-          />
-        )}
-        {fullscreenCameraPrinterId && (
-          <CameraFullscreenWall
-            printers={data.printers}
-            activePrinterId={fullscreenCameraPrinterId}
-            onSelectPrinter={setFullscreenCameraPrinterId}
-            onClose={() => setFullscreenCameraPrinterId(null)}
-          />
-        )}
       </div>
     </div>
   );

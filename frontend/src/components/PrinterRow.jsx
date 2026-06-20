@@ -1,4 +1,3 @@
-﻿import { CameraPreview } from "./CameraPreview";
 import { HomeAssistantPowerButton } from "./HomeAssistantPowerButton";
 import { PrinterModelPreview } from "./PrinterModelPreview";
 import { PrinterStatusBadge } from "./PrinterStatusBadge";
@@ -25,9 +24,7 @@ export function PrinterRow({
   onToggleLight,
   onPowerAction,
   onRestartService,
-  onMarkReady,
-  onOpenFloatingCamera,
-  onOpenFullscreenCamera
+  onMarkReady
 }) {
   const jobTitle = cleanJobName(printer.telemetry.currentFile);
   const isPoweredOff = printer.powerState !== "on";
@@ -37,7 +34,7 @@ export function PrinterRow({
 
   return (
     <article
-      className={`glass animate-rise flex h-full min-h-[680px] flex-col gap-3 rounded-[24px] border p-3 shadow-glow transition ${
+      className={`glass animate-rise flex h-full min-h-[620px] flex-col gap-3 rounded-[24px] border p-3 shadow-glow transition ${
         isPoweredOff
           ? "border-white/5 opacity-55 saturate-0"
           : "border-white/10 opacity-100"
@@ -65,12 +62,6 @@ export function PrinterRow({
           </button>
         </div>
       </div>
-
-      <CameraPreview
-        printer={printer}
-        onOpenFloating={onOpenFloatingCamera}
-        onOpenFullscreen={onOpenFullscreenCamera}
-      />
 
       <div className="space-y-2 md:hidden">
         {canRestartServices && (

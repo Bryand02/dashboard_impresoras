@@ -8,6 +8,8 @@ import { notificationsRouter } from "./routes/notifications.js";
 import { printHostRouter } from "./routes/printHost.js";
 import { printersRouter } from "./routes/printers.js";
 import { queueRouter } from "./routes/queue.js";
+import { shareLinksRouter } from "./routes/shareLinks.js";
+import { streamingRouter } from "./routes/streaming.js";
 import { systemRouter } from "./routes/system.js";
 
 export const app = express();
@@ -28,6 +30,8 @@ app.use("/api/library", libraryRouter);
 app.use("/api/queue", queueRouter);
 app.use("/api/system", systemRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use(shareLinksRouter);
+app.use(streamingRouter);
 
 app.use(express.static(frontendDistPath));
 

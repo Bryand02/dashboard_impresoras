@@ -144,7 +144,7 @@ export const printers = [
     name: "ENDER 4",
     moonrakerUrl: "https://ender4.platia.com.co",
     syncMode: "live",
-    cameraUrl: "https://ender4.platia.com.co",
+    cameraUrl: "https://cam1-gestor3d.platia.com.co/stream.html?src=cam1&mode=mse",
     powerEnabled: true,
     homeAssistantEntity: "switch.ender_5_plus_cuarta_socket_1",
     readyOverride: false,

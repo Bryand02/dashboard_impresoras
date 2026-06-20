@@ -82,6 +82,30 @@ class HomeAssistantService {
     };
   }
 
+  async selectOption(entityId, option) {
+    if (!entityId || !option) {
+      throw new Error("entity_id and option are required");
+    }
+
+    if (!this.isConfigured()) {
+      return {
+        message: `Simulacion preset: ${option} -> ${entityId}`
+      };
+    }
+
+    await this.request("/api/services/select/select_option", {
+      method: "POST",
+      body: JSON.stringify({
+        entity_id: entityId,
+        option
+      })
+    });
+
+    return {
+      message: `Home Assistant preset: ${option} -> ${entityId}`
+    };
+  }
+
   async syncPrintersPowerStates() {
     const printers = printerConfigService.list().filter((printer) => printer.powerEnabled && printer.homeAssistantEntity);
     if (!this.isConfigured()) return;
