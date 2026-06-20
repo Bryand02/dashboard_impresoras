@@ -7,7 +7,14 @@ import { ShareStreamModal } from "./ShareStreamModal";
 function buildEmbedUrl(cameraUrl) {
   if (!isWebUrl(cameraUrl)) return "";
   const source = getGo2RtcSource(cameraUrl);
-  return source?.webRtcUrl || cameraUrl;
+  try {
+    const target = new URL(source?.webRtcUrl || cameraUrl);
+    target.searchParams.set("autoplay", "1");
+    target.searchParams.set("muted", "1");
+    return target.toString();
+  } catch {
+    return source?.webRtcUrl || cameraUrl;
+  }
 }
 
 function resolveCamera(camera, selectedPresetId) {
@@ -31,7 +38,7 @@ function resolveCamera(camera, selectedPresetId) {
   };
 }
 
-function StreamingFrame({ camera, compact = false }) {
+function StreamingFrame({ camera, compact = false, interactive = false }) {
   const embedUrl = useMemo(() => buildEmbedUrl(camera.activeUrl), [camera.activeUrl]);
   const rotation = ((Number(camera.activeRotation) || 0) + 360) % 360;
   const isQuarterTurn = rotation === 90 || rotation === 270;
@@ -62,12 +69,12 @@ function StreamingFrame({ camera, compact = false }) {
             transformOrigin: "center center"
           }}
           loading="lazy"
-          allow="autoplay; fullscreen"
+          allow="autoplay; fullscreen; picture-in-picture"
           referrerPolicy="no-referrer"
           scrolling="no"
         />
       </div>
-      <div className="absolute inset-0 z-10" aria-hidden="true" />
+      {!interactive && <div className="absolute inset-0 z-10" aria-hidden="true" />}
     </div>
   );
 }
@@ -216,7 +223,7 @@ function StreamingFullscreenWall({
         <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row">
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-black shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
-              <StreamingFrame camera={activeCamera} />
+              <StreamingFrame camera={activeCamera} interactive />
             </div>
             <div className="mt-3 rounded-[22px] border border-white/10 bg-[#0b1017] px-3 py-3">
               <PresetSwitcher
@@ -270,6 +277,7 @@ export function StreamingSection({ configVersion = 0 }) {
   const [shareTarget, setShareTarget] = useState(null);
   const [movingCameraId, setMovingCameraId] = useState("");
   const [movingPresetId, setMovingPresetId] = useState("");
+  const [mobileCameraId, setMobileCameraId] = useState("tapo-1");
   const [feedback, setFeedback] = useState("");
   const [selectedPresets, setSelectedPresets] = useState({
     "tapo-1": "preset-a",
@@ -313,6 +321,9 @@ export function StreamingSection({ configVersion = 0 }) {
     }
   };
 
+  const activeMobileCamera =
+    resolvedCameras.find((camera) => camera.id === mobileCameraId) || resolvedCameras[0] || null;
+
   return (
     <>
       {feedback && (
@@ -320,7 +331,42 @@ export function StreamingSection({ configVersion = 0 }) {
           {feedback}
         </div>
       )}
-      <section className="grid gap-3 xl:grid-cols-3">
+
+      <section className="space-y-3 lg:hidden">
+        <div className="glass rounded-[24px] border border-white/10 p-3 shadow-glow">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Streaming movil</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {resolvedCameras.map((camera) => (
+              <button
+                key={camera.id}
+                type="button"
+                onClick={() => setMobileCameraId(camera.id)}
+                className={`rounded-2xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition ${
+                  activeMobileCamera?.id === camera.id
+                    ? "border-cyan-300/35 bg-cyan-400/12 text-cyan-200"
+                    : "border-white/10 bg-white/5 text-slate-300"
+                }`}
+              >
+                {camera.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {activeMobileCamera && (
+          <CameraCard
+            key={activeMobileCamera.id}
+            camera={activeMobileCamera}
+            selectedPresetId={selectedPresets[activeMobileCamera.id]}
+            movingPresetId={movingCameraId === activeMobileCamera.id ? movingPresetId : ""}
+            onSelectPreset={(preset) => handleSelectPreset(activeMobileCamera, preset)}
+            onOpenShare={() => handleOpenShare(activeMobileCamera)}
+            onOpenFullscreen={() => setFullscreenCameraId(activeMobileCamera.id)}
+          />
+        )}
+      </section>
+
+      <section className="hidden gap-3 lg:grid xl:grid-cols-3">
         {resolvedCameras.map((camera) => (
           <CameraCard
             key={camera.id}
