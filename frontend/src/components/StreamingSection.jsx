@@ -346,7 +346,8 @@ export function StreamingSection({ configVersion = 0, printers = [] }) {
       cameraName: camera.name,
       presetLabel: camera.activePresetLabel,
       streamUrl: camera.activeUrl,
-      embedUrl
+      embedUrl,
+      rotation: Number(camera.activeRotation) || 0
     });
   };
 

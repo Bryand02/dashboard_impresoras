@@ -36,6 +36,7 @@ export function ShareStreamModal({ open, onClose, shareTarget }) {
         presetLabel: shareTarget.presetLabel,
         streamUrl: shareTarget.streamUrl,
         embedUrl: shareTarget.embedUrl,
+        rotation: shareTarget.rotation,
         durationHours
       });
       setShareInfo(response);

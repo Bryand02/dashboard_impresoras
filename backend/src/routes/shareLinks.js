@@ -5,6 +5,11 @@ export const shareLinksRouter = Router();
 
 const buildPublicShareUrl = (req, token) => `${req.protocol}://${req.get("host")}/share/${token}`;
 
+const normalizeRotation = (value) => {
+  const rotation = Number(value) || 0;
+  return ((rotation % 360) + 360) % 360;
+};
+
 const escapeHtml = (value) =>
   String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -58,12 +63,17 @@ const renderUnavailablePage = () => `<!doctype html>
 </body>
 </html>`;
 
-const renderSharePage = (link) => `<!doctype html>
+const renderSharePage = (link) => {
+  const rotation = normalizeRotation(link.rotation);
+  const quarterTurn = rotation === 90 || rotation === 270;
+  const transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${quarterTurn ? 1.08 : 1})`;
+
+  return `<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(link.cameraName)} · Share Link</title>
+  <title>${escapeHtml(link.cameraName)} - Share Link</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -100,6 +110,7 @@ const renderSharePage = (link) => `<!doctype html>
       padding: 0 16px 16px;
     }
     .frame {
+      position: relative;
       height: calc(100vh - 110px);
       min-height: 320px;
       overflow: hidden;
@@ -108,11 +119,22 @@ const renderSharePage = (link) => `<!doctype html>
       background: #000;
       box-shadow: 0 24px 80px rgba(0,0,0,0.45);
     }
+    .frame-inner {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #000;
+    }
     iframe {
+      position: absolute;
+      left: 50%;
+      top: 50%;
       width: 100%;
       height: 100%;
       border: 0;
       background: #000;
+      transform: ${JSON.stringify(transform)};
+      transform-origin: center center;
     }
     @media (max-width: 768px) {
       header { padding: 16px 16px 12px; }
@@ -125,23 +147,26 @@ const renderSharePage = (link) => `<!doctype html>
   <header>
     <div class="eyebrow">Streaming compartido</div>
     <h1>${escapeHtml(link.cameraName)}</h1>
-    <div class="meta">${escapeHtml(link.presetLabel || "Vista activa")} · Expira ${escapeHtml(
+    <div class="meta">${escapeHtml(link.presetLabel || "Vista activa")} - Expira ${escapeHtml(
       new Date(link.expiresAt).toLocaleString("es-CO")
     )}</div>
   </header>
   <main class="shell">
     <div class="frame">
-      <iframe
-        src="${escapeHtml(link.embedUrl)}"
-        title="${escapeHtml(link.cameraName)}"
-        allow="autoplay; fullscreen"
-        referrerpolicy="no-referrer"
-        scrolling="no"
-      ></iframe>
+      <div class="frame-inner">
+        <iframe
+          src="${escapeHtml(link.embedUrl)}"
+          title="${escapeHtml(link.cameraName)}"
+          allow="autoplay; fullscreen; picture-in-picture"
+          referrerpolicy="no-referrer"
+          scrolling="no"
+        ></iframe>
+      </div>
     </div>
   </main>
 </body>
 </html>`;
+};
 
 shareLinksRouter.post("/api/share-links", (req, res) => {
   try {
@@ -151,6 +176,7 @@ shareLinksRouter.post("/api/share-links", (req, res) => {
       presetLabel: req.body.presetLabel,
       streamUrl: req.body.streamUrl,
       embedUrl: req.body.embedUrl,
+      rotation: req.body.rotation,
       durationHours: req.body.durationHours
     });
 

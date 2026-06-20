@@ -43,7 +43,7 @@ class ShareLinkService {
     fs.writeFileSync(storagePath, JSON.stringify({ links: this.links }, null, 2), "utf8");
   }
 
-  create({ cameraId, cameraName, presetLabel, streamUrl, embedUrl, durationHours }) {
+  create({ cameraId, cameraName, presetLabel, streamUrl, embedUrl, rotation = 0, durationHours }) {
     const normalizedDuration = normalizeDuration(durationHours);
     if (!cameraId || !streamUrl || !embedUrl || !normalizedDuration) {
       throw new Error("invalid-payload");
@@ -61,6 +61,7 @@ class ShareLinkService {
       presetLabel: presetLabel || "",
       streamUrl,
       embedUrl,
+      rotation: Number.isFinite(Number(rotation)) ? Number(rotation) : 0,
       expiresAt: expiresAt.toISOString(),
       createdAt: createdAt.toISOString(),
       revoked: false
