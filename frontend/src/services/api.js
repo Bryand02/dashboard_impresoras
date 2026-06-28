@@ -22,7 +22,11 @@ const parseResponse = async (response) => {
     return response.json();
   }
   const text = await response.text();
+  const normalized = String(text || "").trim();
   if (!response.ok) {
+    if (normalized.startsWith("<!DOCTYPE") || normalized.startsWith("<html")) {
+      throw new Error("El servidor devolvio una pagina de error HTML. Revisa el proxy o el servicio de streaming.");
+    }
     throw new Error(text || "La respuesta del servidor no fue valida.");
   }
   throw new Error("El backend no devolvio JSON. Verifica que la API este actualizada.");

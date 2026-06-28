@@ -1,6 +1,8 @@
 export const STREAMING_STORAGE_KEY = "printer-hub-streaming-cameras";
 export const STREAMING_AUTH_KEY = "printer-hub-streaming-config-auth";
 export const STREAMING_FIXED_PASSWORD = "4253";
+const CAM_ONE_URL = "https://cam1-gestor3d.platia.com.co/stream.html?src=cam1";
+const CAM_THREE_URL = "https://cam1-gestor3d.platia.com.co/stream.html?src=cam3";
 
 export const defaultStreamingCameras = [
   {
@@ -13,14 +15,14 @@ export const defaultStreamingCameras = [
       {
         id: "preset-a",
         name: "Ender 1",
-        url: "https://cam1-gestor3d.platia.com.co/stream.html?src=cam1",
+        url: CAM_THREE_URL,
         presetOption: "Ender 1",
         rotation: 90
       },
       {
         id: "preset-b",
         name: "Ender 2",
-        url: "https://cam1-gestor3d.platia.com.co/stream.html?src=cam1",
+        url: CAM_THREE_URL,
         presetOption: "Ender_2",
         rotation: 270
       }
@@ -44,14 +46,14 @@ export const defaultStreamingCameras = [
       {
         id: "preset-a",
         name: "Ender 3",
-        url: "https://cam1-gestor3d.platia.com.co/stream.html?src=cam3",
-        presetOption: "Ender_3",
+        url: CAM_ONE_URL,
+        presetOption: "Ender 3",
         rotation: 90
       },
       {
         id: "preset-b",
         name: "Ender 4",
-        url: "https://cam1-gestor3d.platia.com.co/stream.html?src=cam3",
+        url: CAM_ONE_URL,
         presetOption: "Ender_4",
         rotation: 270
       }
@@ -78,14 +80,58 @@ function mergePresets(defaultCamera, savedCamera) {
   };
 }
 
+function migrateCameraSwap(cameras) {
+  if (!Array.isArray(cameras)) return cameras;
+
+  const tapoOne = cameras.find((camera) => camera.id === "tapo-1");
+  const tapoThree = cameras.find((camera) => camera.id === "tapo-3");
+
+  const tapoOneNeedsSwap =
+    tapoOne?.presets?.length &&
+    tapoOne.presets.every((preset) => preset.url === CAM_ONE_URL);
+  const tapoThreeNeedsSwap =
+    tapoThree?.presets?.length &&
+    tapoThree.presets.every((preset) => preset.url === CAM_THREE_URL);
+
+  if (!tapoOneNeedsSwap && !tapoThreeNeedsSwap) return cameras;
+
+  return cameras.map((camera) => {
+    if (camera.id === "tapo-1" && Array.isArray(camera.presets)) {
+      return {
+        ...camera,
+        presets: camera.presets.map((preset) => ({
+          ...preset,
+          url: CAM_THREE_URL
+        }))
+      };
+    }
+
+    if (camera.id === "tapo-3" && Array.isArray(camera.presets)) {
+      return {
+        ...camera,
+        presets: camera.presets.map((preset) => ({
+          ...preset,
+          url: CAM_ONE_URL
+        }))
+      };
+    }
+
+    return camera;
+  });
+}
+
 export function loadStreamingCameras() {
   try {
     const raw = window.localStorage.getItem(STREAMING_STORAGE_KEY);
     if (!raw) return defaultStreamingCameras;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return defaultStreamingCameras;
+    const migrated = migrateCameraSwap(parsed);
+    if (JSON.stringify(migrated) !== JSON.stringify(parsed)) {
+      saveStreamingCameras(migrated);
+    }
     return defaultStreamingCameras.map((camera) => {
-      const saved = parsed.find((item) => item.id === camera.id);
+      const saved = migrated.find((item) => item.id === camera.id);
       if (!saved) return camera;
       if (camera.presets) {
         return {
