@@ -286,15 +286,29 @@ export const revokeShareLink = async (token) => {
   return data;
 };
 
-export const moveStreamingPreset = async (entityId, option) => {
+export const moveStreamingPreset = async (entityId, option, entityIds = []) => {
   const response = await fetch(`${API_URL}/streaming/preset`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entityId, option })
+    body: JSON.stringify({ entityId, option, entityIds })
   });
   const data = await parseResponse(response);
   if (!response.ok) {
     throw new Error(data.message || "No fue posible mover la camara.");
+  }
+  return data;
+};
+
+export const fetchStreamingPresets = async (entityId, entityIds = []) => {
+  const params = new URLSearchParams();
+  params.set("entityId", entityId);
+  entityIds.forEach((candidate) => {
+    if (candidate && candidate !== entityId) params.append("entityIds", candidate);
+  });
+  const response = await fetch(`${API_URL}/streaming/presets?${params.toString()}`);
+  const data = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(data.message || "No fue posible leer los presets.");
   }
   return data;
 };

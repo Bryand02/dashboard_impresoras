@@ -10,6 +10,10 @@ export const defaultStreamingCameras = [
     name: "Ender 1 y 2",
     hint: "Camara con posiciones guardadas",
     presetEntityId: "select.ender_1_y_2_move_to_preset_2",
+    presetEntityCandidates: [
+      "select.ender_1_y_2_move_to_preset_2",
+      "select.ender_1_y_2_move_to_preset"
+    ],
     rotation: 0,
     presets: [
       {
@@ -41,6 +45,7 @@ export const defaultStreamingCameras = [
     name: "Ender 3 y 4",
     hint: "Camara con posiciones guardadas",
     presetEntityId: "select.ender_3_y_4_move_to_preset",
+    presetEntityCandidates: ["select.ender_3_y_4_move_to_preset"],
     rotation: 0,
     presets: [
       {
@@ -61,21 +66,58 @@ export const defaultStreamingCameras = [
   }
 ];
 
+function slugifyPreset(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function createPresetId(option, index = 0) {
+  const slug = slugifyPreset(option);
+  return slug ? `preset-${slug}` : `preset-${index + 1}`;
+}
+
+function buildPresetFromOption(option, index, existingPreset, fallbackPreset, fallbackUrl, fallbackRotation) {
+  return {
+    id: existingPreset?.id || fallbackPreset?.id || createPresetId(option, index),
+    name: existingPreset?.name || fallbackPreset?.name || option,
+    url: existingPreset?.url || fallbackPreset?.url || fallbackUrl || "",
+    presetOption: option,
+    rotation: Number.isFinite(Number(existingPreset?.rotation))
+      ? Number(existingPreset.rotation)
+      : Number.isFinite(Number(fallbackPreset?.rotation))
+      ? Number(fallbackPreset.rotation)
+      : fallbackRotation || 0
+  };
+}
+
 function mergePresets(defaultCamera, savedCamera) {
   if (!defaultCamera.presets) return defaultCamera;
+  const basePresets = Array.isArray(savedCamera?.presets) && savedCamera.presets.length
+    ? savedCamera.presets
+    : defaultCamera.presets;
+  const fallbackUrl = savedCamera?.presets?.[0]?.url || defaultCamera.presets?.[0]?.url || "";
+  const fallbackRotation = Number(savedCamera?.rotation) || Number(defaultCamera.rotation) || 0;
+
   return {
     ...defaultCamera,
-    presets: defaultCamera.presets.map((preset) => {
-      const savedPreset = savedCamera?.presets?.find((item) => item.id === preset.id);
-      return savedPreset
-        ? {
-            ...preset,
-            name: savedPreset.name || preset.name,
-            url: savedPreset.url || preset.url,
-            presetOption: savedPreset.presetOption || preset.presetOption || "",
-            rotation: Number.isFinite(Number(savedPreset.rotation)) ? Number(savedPreset.rotation) : preset.rotation || 0
-          }
-        : preset;
+    presets: basePresets.map((preset, index) => {
+      const defaultPreset =
+        defaultCamera.presets.find((item) => item.id === preset.id) ||
+        defaultCamera.presets.find((item) => item.presetOption === preset.presetOption) ||
+        defaultCamera.presets.find((item) => item.name === preset.name);
+
+      return buildPresetFromOption(
+        preset.presetOption || preset.name || `Preset ${index + 1}`,
+        index,
+        preset,
+        defaultPreset,
+        fallbackUrl,
+        fallbackRotation
+      );
     })
   };
 }
@@ -139,6 +181,10 @@ export function loadStreamingCameras() {
           name: saved.name || camera.name,
           hint: saved.hint || camera.hint,
           presetEntityId: saved.presetEntityId || camera.presetEntityId || "",
+          presetEntityCandidates:
+            Array.isArray(saved.presetEntityCandidates) && saved.presetEntityCandidates.length
+              ? saved.presetEntityCandidates
+              : camera.presetEntityCandidates || [],
           rotation: Number.isFinite(Number(saved.rotation)) ? Number(saved.rotation) : camera.rotation || 0
         };
       }
@@ -158,6 +204,43 @@ export function loadStreamingCameras() {
 
 export function saveStreamingCameras(cameras) {
   window.localStorage.setItem(STREAMING_STORAGE_KEY, JSON.stringify(cameras));
+}
+
+export function getStreamingEntityCandidates(camera) {
+  const candidates = [
+    camera?.presetEntityId,
+    ...(Array.isArray(camera?.presetEntityCandidates) ? camera.presetEntityCandidates : [])
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  return [...new Set(candidates)];
+}
+
+export function syncCameraPresets(camera, options = []) {
+  if (!camera?.presetEntityId || !Array.isArray(options) || !options.length) return camera;
+
+  const fallbackUrl = camera.presets?.[0]?.url || "";
+  const fallbackRotation = Number(camera.rotation) || 0;
+
+  return {
+    ...camera,
+    presets: options.map((option, index) => {
+      const existingPreset =
+        camera.presets?.find((preset) => preset.presetOption === option) ||
+        camera.presets?.find((preset) => preset.name === option) ||
+        camera.presets?.[index];
+
+      return buildPresetFromOption(
+        option,
+        index,
+        existingPreset,
+        null,
+        fallbackUrl,
+        fallbackRotation
+      );
+    })
+  };
 }
 
 export function hasStreamingPassword() {

@@ -1,7 +1,7 @@
-﻿import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getGo2RtcSource, isWebUrl } from "./cameraUtils";
 import { moveStreamingPreset } from "../services/api";
-import { loadStreamingCameras } from "./streamingConfig";
+import { getStreamingEntityCandidates, loadStreamingCameras } from "./streamingConfig";
 import { ShareStreamModal } from "./ShareStreamModal";
 import { ProgressBar } from "./ProgressBar";
 
@@ -39,10 +39,29 @@ function resolveCamera(camera, selectedPresetId) {
   };
 }
 
-function StreamingFrame({ camera, compact = false, interactive = false }) {
+function StreamingFrame({ camera, compact = false, interactive = false, fit = "fill" }) {
   const embedUrl = useMemo(() => buildEmbedUrl(camera.activeUrl), [camera.activeUrl]);
+  const frameRef = useRef(null);
   const rotation = ((Number(camera.activeRotation) || 0) + 360) % 360;
   const isQuarterTurn = rotation === 90 || rotation === 270;
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!frameRef.current || typeof ResizeObserver === "undefined") return undefined;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const nextWidth = entry.contentRect?.width || 0;
+      const nextHeight = entry.contentRect?.height || 0;
+      setFrameSize((current) =>
+        current.width === nextWidth && current.height === nextHeight
+          ? current
+          : { width: nextWidth, height: nextHeight }
+      );
+    });
+
+    observer.observe(frameRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   if (!embedUrl) {
     return (
@@ -55,18 +74,24 @@ function StreamingFrame({ camera, compact = false, interactive = false }) {
     );
   }
 
+  const containScale =
+    isQuarterTurn && frameSize.width > 0 && frameSize.height > 0
+      ? Math.min(frameSize.width / frameSize.height, frameSize.height / frameSize.width)
+      : 1;
+  const scale = fit === "contain" ? containScale : isQuarterTurn ? 1.08 : 1;
+
   return (
-    <div className="relative h-full w-full">
+    <div ref={frameRef} className="relative h-full w-full">
       <div className="absolute inset-0 overflow-hidden bg-black">
         <iframe
           src={embedUrl}
           title={`Streaming ${camera.name}`}
           className="absolute left-1/2 top-1/2 border-0 bg-black"
           style={{
-            width: isQuarterTurn ? "100%" : "100%",
-            height: isQuarterTurn ? "100%" : "100%",
+            width: "100%",
+            height: "100%",
             clipPath: compact ? "inset(0 0 48px 0)" : "inset(0 0 54px 0)",
-            transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${isQuarterTurn ? 1.08 : 1})`,
+            transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`,
             transformOrigin: "center center"
           }}
           loading="lazy"
@@ -238,6 +263,8 @@ function StreamingFullscreenWall({
   const resolvedCameras = cameras.map((camera) => resolveCamera(camera, selectedPresets[camera.id]));
   const activeCamera = resolvedCameras.find((camera) => camera.id === activeCameraId) || resolvedCameras[0];
   const secondaryCameras = resolvedCameras.filter((camera) => camera.id !== activeCamera?.id);
+  const featuredSecondaryCamera = secondaryCameras[0] || null;
+  const remainingSecondaryCameras = secondaryCameras.slice(featuredSecondaryCamera ? 1 : 0);
 
   if (!activeCamera) return null;
 
@@ -268,34 +295,71 @@ function StreamingFullscreenWall({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row">
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-black shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
-              <StreamingFrame camera={activeCamera} interactive />
+        <div className="flex min-h-0 flex-1 flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className={`grid min-h-0 flex-1 gap-3 ${featuredSecondaryCamera ? "2xl:grid-cols-2" : "grid-cols-1"}`}>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{activeCamera.name}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">{activeCamera.activePresetLabel}</p>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-black shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+                <StreamingFrame camera={activeCamera} interactive fit="contain" />
+              </div>
+              <div className="mt-3 rounded-[22px] border border-white/10 bg-[#0b1017] px-3 py-3">
+                <PresetSwitcher
+                  camera={activeCamera}
+                  selectedPresetId={selectedPresets[activeCamera.id]}
+                  movingPresetId={movingCameraId === activeCamera.id ? movingPresetId : ""}
+                  onSelectPreset={(preset) => onSelectPreset(activeCamera, preset)}
+                />
+              </div>
             </div>
-            <div className="mt-3 rounded-[22px] border border-white/10 bg-[#0b1017] px-3 py-3">
-              <PresetSwitcher
-                camera={activeCamera}
-                selectedPresetId={selectedPresets[activeCamera.id]}
-                movingPresetId={movingCameraId === activeCamera.id ? movingPresetId : ""}
-                onSelectPreset={(preset) => onSelectPreset(activeCamera, preset)}
-              />
-            </div>
+
+            {featuredSecondaryCamera && (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{featuredSecondaryCamera.name}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">{featuredSecondaryCamera.activePresetLabel}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onSelectCamera(featuredSecondaryCamera.id)}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-200 transition hover:bg-white/10"
+                  >
+                    Principal
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-black shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+                  <StreamingFrame camera={featuredSecondaryCamera} interactive fit="contain" />
+                </div>
+                <div className="mt-3 rounded-[22px] border border-white/10 bg-[#0b1017] px-3 py-3">
+                  <PresetSwitcher
+                    camera={featuredSecondaryCamera}
+                    selectedPresetId={selectedPresets[featuredSecondaryCamera.id]}
+                    movingPresetId={movingCameraId === featuredSecondaryCamera.id ? movingPresetId : ""}
+                    onSelectPreset={(preset) => onSelectPreset(featuredSecondaryCamera, preset)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          <aside className="flex w-full shrink-0 gap-3 overflow-x-auto md:w-[260px] md:flex-col md:overflow-y-auto md:overflow-x-hidden">
-            {secondaryCameras.map((camera) => (
+          <aside className="flex w-full shrink-0 gap-3 overflow-x-auto xl:w-[340px] xl:flex-col xl:overflow-y-auto xl:overflow-x-hidden">
+            {remainingSecondaryCameras.map((camera) => (
               <div
                 key={camera.id}
-                className="min-w-[180px] overflow-hidden rounded-[22px] border border-white/10 bg-[#0b1017] text-left md:min-w-0"
+                className="min-w-[220px] overflow-hidden rounded-[22px] border border-white/10 bg-[#0b1017] text-left xl:min-w-0"
               >
                 <button
                   type="button"
                   onClick={() => onSelectCamera(camera.id)}
                   className="block w-full text-left transition hover:border-cyan-300/30"
                 >
-                  <div className="h-28 overflow-hidden bg-black md:h-36">
-                    <StreamingFrame camera={camera} compact />
+                  <div className="h-36 overflow-hidden bg-black xl:h-44">
+                    <StreamingFrame camera={camera} compact fit="contain" />
                   </div>
                   <div className="border-t border-white/5 px-3 py-2">
                     <p className="truncate text-sm font-semibold text-slate-100">{camera.name}</p>
@@ -337,6 +401,7 @@ export function StreamingSection({ configVersion = 0, printers = [] }) {
     [cameras, selectedPresets]
   );
   const availableFullscreenCameras = resolvedCameras.filter((camera) => isWebUrl(camera.activeUrl));
+  const isFullscreenOpen = Boolean(fullscreenCameraId && availableFullscreenCameras.length > 0);
 
   const handleOpenShare = (camera) => {
     const embedUrl = buildEmbedUrl(camera.activeUrl);
@@ -358,7 +423,11 @@ export function StreamingSection({ configVersion = 0, printers = [] }) {
       setFeedback("");
       setMovingCameraId(camera.id);
       setMovingPresetId(preset.id);
-      await moveStreamingPreset(camera.presetEntityId, preset.presetOption);
+      await moveStreamingPreset(
+        camera.presetEntityId,
+        preset.presetOption,
+        getStreamingEntityCandidates(camera)
+      );
       setFeedback(`${camera.name}: movida a ${preset.name}.`);
     } catch (error) {
       setFeedback(error.message || `No fue posible mover ${camera.name}.`);
@@ -381,57 +450,61 @@ export function StreamingSection({ configVersion = 0, printers = [] }) {
         </div>
       )}
 
-      <section className="space-y-3 lg:hidden">
-        <div className="glass rounded-[24px] border border-white/10 p-3 shadow-glow">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Streaming movil</p>
-          <div className="mt-3 flex flex-wrap gap-2">
+      {!isFullscreenOpen && (
+        <>
+          <section className="space-y-3 lg:hidden">
+            <div className="glass rounded-[24px] border border-white/10 p-3 shadow-glow">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Streaming movil</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {resolvedCameras.map((camera) => (
+                  <button
+                    key={camera.id}
+                    type="button"
+                    onClick={() => setMobileCameraId(camera.id)}
+                    className={`rounded-2xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition ${
+                      activeMobileCamera?.id === camera.id
+                        ? "border-cyan-300/35 bg-cyan-400/12 text-cyan-200"
+                        : "border-white/10 bg-white/5 text-slate-300"
+                    }`}
+                  >
+                    {camera.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {activeMobileCamera && (
+              <CameraCard
+                key={activeMobileCamera.id}
+                camera={activeMobileCamera}
+                selectedPresetId={selectedPresets[activeMobileCamera.id]}
+                movingPresetId={movingCameraId === activeMobileCamera.id ? movingPresetId : ""}
+                onSelectPreset={(preset) => handleSelectPreset(activeMobileCamera, preset)}
+                onOpenShare={() => handleOpenShare(activeMobileCamera)}
+                onOpenFullscreen={() => setFullscreenCameraId(activeMobileCamera.id)}
+              />
+            )}
+          </section>
+
+          <section className="hidden gap-3 lg:grid xl:grid-cols-3">
             {resolvedCameras.map((camera) => (
-              <button
+              <CameraCard
                 key={camera.id}
-                type="button"
-                onClick={() => setMobileCameraId(camera.id)}
-                className={`rounded-2xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition ${
-                  activeMobileCamera?.id === camera.id
-                    ? "border-cyan-300/35 bg-cyan-400/12 text-cyan-200"
-                    : "border-white/10 bg-white/5 text-slate-300"
-                }`}
-              >
-                {camera.name}
-              </button>
+                camera={camera}
+                selectedPresetId={selectedPresets[camera.id]}
+                movingPresetId={movingCameraId === camera.id ? movingPresetId : ""}
+                onSelectPreset={(preset) => handleSelectPreset(camera, preset)}
+                onOpenShare={() => handleOpenShare(camera)}
+                onOpenFullscreen={() => setFullscreenCameraId(camera.id)}
+              />
             ))}
-          </div>
-        </div>
+          </section>
 
-        {activeMobileCamera && (
-          <CameraCard
-            key={activeMobileCamera.id}
-            camera={activeMobileCamera}
-            selectedPresetId={selectedPresets[activeMobileCamera.id]}
-            movingPresetId={movingCameraId === activeMobileCamera.id ? movingPresetId : ""}
-            onSelectPreset={(preset) => handleSelectPreset(activeMobileCamera, preset)}
-            onOpenShare={() => handleOpenShare(activeMobileCamera)}
-            onOpenFullscreen={() => setFullscreenCameraId(activeMobileCamera.id)}
-          />
-        )}
-      </section>
+          <PrinterProgressStrip printers={printers} />
+        </>
+      )}
 
-      <section className="hidden gap-3 lg:grid xl:grid-cols-3">
-        {resolvedCameras.map((camera) => (
-          <CameraCard
-            key={camera.id}
-            camera={camera}
-            selectedPresetId={selectedPresets[camera.id]}
-            movingPresetId={movingCameraId === camera.id ? movingPresetId : ""}
-            onSelectPreset={(preset) => handleSelectPreset(camera, preset)}
-            onOpenShare={() => handleOpenShare(camera)}
-            onOpenFullscreen={() => setFullscreenCameraId(camera.id)}
-          />
-        ))}
-      </section>
-
-      <PrinterProgressStrip printers={printers} />
-
-      {fullscreenCameraId && availableFullscreenCameras.length > 0 && (
+      {isFullscreenOpen && (
         <StreamingFullscreenWall
           cameras={cameras}
           activeCameraId={fullscreenCameraId}
@@ -453,4 +526,3 @@ export function StreamingSection({ configVersion = 0, printers = [] }) {
     </>
   );
 }
-

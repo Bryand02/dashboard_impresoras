@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { fetchStreamingPresets } from "../services/api";
 import {
+  getStreamingEntityCandidates,
   isStreamingConfigUnlocked,
   loadStreamingCameras,
   lockStreamingConfig,
   saveStreamingCameras,
-  STREAMING_FIXED_PASSWORD,
+  syncCameraPresets,
   unlockStreamingConfig
 } from "./streamingConfig";
 
@@ -39,6 +41,8 @@ export function StreamingConfigModal({ open, onClose, onSaved }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [cameras, setCameras] = useState([]);
+  const [syncingCameraId, setSyncingCameraId] = useState("");
+  const [syncMessage, setSyncMessage] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -51,6 +55,8 @@ export function StreamingConfigModal({ open, onClose, onSaved }) {
     }
     setPassword("");
     setError("");
+    setSyncMessage("");
+    setSyncingCameraId("");
   }, [open]);
 
   if (!open) return null;
@@ -81,6 +87,27 @@ export function StreamingConfigModal({ open, onClose, onSaved }) {
     setCameras((current) => current.map((camera) => (camera.id === cameraId ? { ...camera, [key]: value } : camera)));
   };
 
+  const handleSyncPresets = async (camera) => {
+    if (!camera?.presetEntityId) return;
+    try {
+      setSyncingCameraId(camera.id);
+      setError("");
+      setSyncMessage("");
+      const response = await fetchStreamingPresets(
+        camera.presetEntityId,
+        getStreamingEntityCandidates(camera)
+      );
+      setCameras((current) =>
+        current.map((item) => (item.id === camera.id ? syncCameraPresets(item, response.options) : item))
+      );
+      setSyncMessage(`${camera.name}: ${response.options.length} presets sincronizados.`);
+    } catch (syncError) {
+      setError(syncError.message || `No fue posible sincronizar ${camera.name}.`);
+    } finally {
+      setSyncingCameraId("");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[170] overflow-y-auto bg-black/55 p-3 sm:p-6">
       <div className="mx-auto max-w-4xl rounded-[28px] border border-white/10 bg-[#080b11] p-4 shadow-[0_32px_80px_rgba(0,0,0,0.78)] sm:p-5">
@@ -109,7 +136,6 @@ export function StreamingConfigModal({ open, onClose, onSaved }) {
               className={inputClass()}
               placeholder="Ingresa la clave fija"
             />
-            <p className="mt-2 text-xs text-slate-500">Clave fija de configuracion: {STREAMING_FIXED_PASSWORD}</p>
             {error && <p className="mt-2 text-sm text-rose-300">{error}</p>}
             <button
               type="button"
@@ -123,6 +149,7 @@ export function StreamingConfigModal({ open, onClose, onSaved }) {
 
         {mode === "edit" && (
           <div className="max-h-[calc(100vh-9rem)] space-y-3 overflow-y-auto pr-1">
+            {syncMessage && <p className="text-sm text-emerald-300">{syncMessage}</p>}
             {cameras.map((camera) => (
               <div key={camera.id} className="rounded-3xl border border-white/10 bg-[#0f141c] p-4">
                 <div className="grid gap-3 md:grid-cols-2">
@@ -145,6 +172,28 @@ export function StreamingConfigModal({ open, onClose, onSaved }) {
                     />
                   </div>
                 </div>
+
+                {camera.presetEntityId && (
+                  <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Entidad Home Assistant</label>
+                      <input
+                        type="text"
+                        value={camera.presetEntityId}
+                        onChange={(event) => updateCamera(camera.id, "presetEntityId", event.target.value)}
+                        className={inputClass()}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSyncPresets(camera)}
+                      disabled={syncingCameraId === camera.id}
+                      className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {syncingCameraId === camera.id ? "Sincronizando..." : "Sincronizar presets"}
+                    </button>
+                  </div>
+                )}
 
                 <div className="mt-3 max-w-xs">
                   <label className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Rotacion del viewport</label>
