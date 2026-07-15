@@ -124,6 +124,15 @@ export const updatePrinter = async (printerId, payload) => {
   return response.json();
 };
 
+export const updatePrinterSpool = async (printerId, payload) => {
+  const response = await fetch(`${API_URL}/printers/${printerId}/spool`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  return response.json();
+};
+
 export const togglePrinterLight = async (printerId) => {
   const response = await fetch(`${API_URL}/printers/${printerId}/light`, {
     method: "POST"

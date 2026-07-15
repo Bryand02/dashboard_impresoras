@@ -47,6 +47,21 @@ export function PrinterMobileCard({ printer, onOpen }) {
         </div>
       </div>
 
+      {printer.spool && (
+        <div
+          className="flex items-center justify-between rounded-2xl border-2 px-3 py-2.5"
+          style={{ borderColor: printer.spool.color, backgroundColor: `${printer.spool.color}22` }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-3 shrink-0 rounded-full border border-white/30" style={{ backgroundColor: printer.spool.color }} />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-100">{printer.spool.material} restante</p>
+          </div>
+          <p className="font-display text-xl leading-none text-white">
+            {printer.spool.remainingGrams}<span className="text-xs text-slate-300">g / {printer.spool.initialGrams}g</span>
+          </p>
+        </div>
+      )}
+
       <div className="pt-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
         {isExpanded ? "Ocultar detalle" : "Ver detalle"}
       </div>

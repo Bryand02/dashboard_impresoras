@@ -147,7 +147,7 @@ export function PrinterRow({
         </div>
       </div>
 
-      <PrinterModelPreview fileName={jobTitle} image={printer.telemetry.thumbnailUrl || printer.image} />
+      <PrinterModelPreview fileName={jobTitle} image={printer.telemetry.thumbnailUrl || printer.image} color={printer.spool?.color} />
 
       <PrinterTimeDisplay
         elapsed={printer.telemetry.elapsedMinutes}
@@ -167,6 +167,22 @@ export function PrinterRow({
           <p className="text-[10px] text-slate-500">actual</p>
         </div>
       </div>
+
+      {printer.spool && (
+        <div
+          className="rounded-2xl border p-2.5"
+          style={{ borderColor: `${printer.spool.color}55`, backgroundColor: `${printer.spool.color}14` }}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] uppercase tracking-[0.14em] text-slate-400">Material restante</p>
+            <span className="h-2.5 w-2.5 rounded-full border border-white/20" style={{ backgroundColor: printer.spool.color }} />
+          </div>
+          <p className="mt-1 font-display text-lg text-slate-100">
+            {printer.spool.remainingGrams}g <span className="text-xs text-slate-500">/ {printer.spool.initialGrams}g</span>
+          </p>
+          <p className="text-[10px] text-slate-500">{printer.spool.material}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <TemperatureDisplay label="Nozzle" actual={printer.telemetry.nozzle.actual} target={printer.telemetry.nozzle.target} />

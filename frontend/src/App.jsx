@@ -29,6 +29,7 @@ import {
   unsubscribeNotifications,
   updateNotificationPreferences,
   updatePrinter,
+  updatePrinterSpool,
   updatePrinterPower,
   getLibraryDownloadUrl
 } from "./services/api";
@@ -202,6 +203,16 @@ function App() {
     await reloadData();
     setConfigPrinter(null);
     setActivityMessage(`Configuracion actualizada para ${printer.name}.`);
+  };
+
+  const handleSaveSpool = async (printer, spoolForm) => {
+    const response = await updatePrinterSpool(printer.id, spoolForm);
+    if (response?.message) {
+      setActivityMessage(response.message);
+      return;
+    }
+    await reloadData();
+    setActivityMessage(`Rollo actualizado en ${printer.name}: ${spoolForm.material} ${spoolForm.grams}g.`);
   };
 
   const handleToggleLight = async (printer) => {
@@ -637,6 +648,7 @@ function App() {
           printer={configPrinter}
           onClose={() => setConfigPrinter(null)}
           onSave={handleSaveConfig}
+          onSaveSpool={handleSaveSpool}
         />
         <StreamingConfigModal
           open={streamingConfigOpen}

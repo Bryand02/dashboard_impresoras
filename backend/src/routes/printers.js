@@ -2,6 +2,7 @@ import { Router } from "express";
 import { homeAssistantService } from "../services/homeAssistantService.js";
 import { moonrakerService } from "../services/moonrakerService.js";
 import { printerConfigService } from "../services/printerConfigService.js";
+import { materialService } from "../services/materialService.js";
 
 export const printersRouter = Router();
 
@@ -70,6 +71,17 @@ printersRouter.post("/:id/restart", async (req, res) => {
       reason: error.message
     });
   }
+});
+
+printersRouter.post("/:id/spool", (req, res) => {
+  const printer = printerConfigService.getById(req.params.id);
+  if (!printer) return res.status(404).json({ message: "Printer not found" });
+  const { color, material, grams } = req.body || {};
+  if (!grams || Number(grams) <= 0) {
+    return res.status(400).json({ message: "Se necesita la cantidad inicial del rollo en gramos." });
+  }
+  const spool = materialService.setSpool(req.params.id, { color, material, grams });
+  return res.json({ printer: printerConfigService.getById(req.params.id), spool });
 });
 
 printersRouter.post("/:id/ready", (req, res) => {

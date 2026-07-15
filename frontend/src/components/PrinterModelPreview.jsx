@@ -8,18 +8,37 @@ const ModelPlaceholder = () => (
   </div>
 );
 
-export function PrinterModelPreview({ fileName, image }) {
+export function PrinterModelPreview({ fileName, image, color }) {
   const hasRealImage = Boolean(image) && !/^https:\/\/images\.unsplash\.com\//i.test(image);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
-      {hasRealImage ? (
-        <img src={image} alt={fileName} className="h-20 w-full object-cover opacity-90" />
-      ) : (
-        <ModelPlaceholder />
-      )}
+    <div
+      className="overflow-hidden rounded-3xl border-2 bg-slate-950/70"
+      style={color ? { borderColor: color, boxShadow: `0 0 20px ${color}33` } : undefined}
+    >
+      <div className="relative">
+        {hasRealImage ? (
+          <img src={image} alt={fileName} className="h-20 w-full object-cover opacity-90" />
+        ) : (
+          <ModelPlaceholder />
+        )}
+        {color && (
+          <div
+            className="pointer-events-none absolute inset-0 mix-blend-color"
+            style={{ backgroundColor: color, opacity: 0.45 }}
+          />
+        )}
+      </div>
       <div className="p-2.5">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Modelo</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Modelo</p>
+          {color && (
+            <span className="flex items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-slate-400">
+              <span className="h-2.5 w-2.5 rounded-full border border-white/20" style={{ backgroundColor: color }} />
+              material
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-xs font-medium leading-5 text-slate-100">{fileName}</p>
         {!hasRealImage && <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-slate-500">Sin thumbnail</p>}
       </div>

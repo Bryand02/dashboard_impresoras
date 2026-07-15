@@ -1,5 +1,6 @@
 import { printers } from "../data/mockData.js";
 import { slugify } from "../utils/formatters.js";
+import { materialService } from "./materialService.js";
 
 class PrinterConfigService {
   constructor() {
@@ -10,12 +11,18 @@ class PrinterConfigService {
     }
   }
 
+  withSpool(printer) {
+    if (!printer) return printer;
+    return { ...printer, spool: materialService.getSpool(printer.id) };
+  }
+
   list() {
-    return this.printers;
+    return this.printers.map((printer) => this.withSpool(printer));
   }
 
   getById(id) {
-    return this.printers.find((printer) => printer.id === id) || null;
+    const printer = this.printers.find((printer) => printer.id === id) || null;
+    return this.withSpool(printer);
   }
 
   create(payload) {
@@ -146,7 +153,11 @@ class PrinterConfigService {
         currentFile: "Apagada por Home Assistant"
       };
     }
-    return this.printers[index];
+    if (current.state === "printing" && effectiveState === "finished" && current.pendingDeduction) {
+      materialService.deduct(id, current.pendingDeduction.grams);
+      this.printers[index].pendingDeduction = null;
+    }
+    return this.withSpool(this.printers[index]);
   }
 
   toggleLight(id) {
@@ -157,14 +168,18 @@ class PrinterConfigService {
   }
 
   markDispatched(id, file) {
-    const printer = this.getById(id);
-    if (!printer) return null;
+    const index = this.printers.findIndex((printer) => printer.id === id);
+    if (index === -1) return null;
+    const printer = this.printers[index];
     printer.readyOverride = false;
     printer.powerState = "on";
     printer.powerOverride = "on";
     printer.state = "printing";
     printer.activeMaterial = file.material || printer.activeMaterial;
     printer.queueSize = Math.max(0, (printer.queueSize || 0) - 1);
+    printer.pendingDeduction = file.weightGrams
+      ? { fileName: file.filename || file.name || "", grams: file.weightGrams }
+      : null;
     printer.telemetry = {
       ...printer.telemetry,
       progress: 0,
@@ -174,7 +189,7 @@ class PrinterConfigService {
       currentFile: file.filename || file.name || "Trabajo enviado",
       velocity: 0
     };
-    return printer;
+    return this.withSpool(printer);
   }
 
   markServiceRestart(id, target) {
