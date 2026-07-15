@@ -11,6 +11,8 @@ services:
       CORS_ORIGIN: https://gestor3d.platia.com.co
       HOME_ASSISTANT_URL: ${HOME_ASSISTANT_URL}
       HOME_ASSISTANT_TOKEN: ${HOME_ASSISTANT_TOKEN}
+      TRUSTED_IP_PREFIXES: ${TRUSTED_IP_PREFIXES}
     volumes:
       - ./backend/storage:/app/backend/storage
+      - /home/sasquatch/docker/menu/visits.json:/home/sasquatch/docker/menu/visits.json:ro
     restart: unless-stopped

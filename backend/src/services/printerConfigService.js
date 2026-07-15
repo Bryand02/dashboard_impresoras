@@ -16,13 +16,19 @@ class PrinterConfigService {
     return { ...printer, spool: materialService.getSpool(printer.id) };
   }
 
+  // Referencia real dentro de this.printers, para metodos que necesitan
+  // mutar el estado en el sitio (togglePower, syncPowerState, etc). NO usar
+  // esto para responder a rutas HTTP directamente: usa getById()/list().
+  getRaw(id) {
+    return this.printers.find((printer) => printer.id === id) || null;
+  }
+
   list() {
     return this.printers.map((printer) => this.withSpool(printer));
   }
 
   getById(id) {
-    const printer = this.printers.find((printer) => printer.id === id) || null;
-    return this.withSpool(printer);
+    return this.withSpool(this.getRaw(id));
   }
 
   create(payload) {
@@ -72,18 +78,18 @@ class PrinterConfigService {
   }
 
   togglePower(id, action) {
-    const printer = this.getById(id);
+    const printer = this.getRaw(id);
     if (!printer) return null;
     printer.powerState = action === "on" ? "on" : "off";
     printer.powerOverride = printer.powerState;
     printer.readyOverride = false;
     printer.state = action === "on" ? "offline" : "offline";
     printer.telemetry.currentFile = action === "on" ? "Esperando Moonraker / Klipper" : "Apagada por Home Assistant";
-    return printer;
+    return this.withSpool(printer);
   }
 
   syncPowerState(id, powerState) {
-    const printer = this.getById(id);
+    const printer = this.getRaw(id);
     if (!printer) return null;
     const previousPowerState = printer.powerState;
     printer.powerState = powerState === "on" ? "on" : "off";
@@ -114,11 +120,11 @@ class PrinterConfigService {
   }
 
   markReady(id) {
-    const printer = this.getById(id);
+    const printer = this.getRaw(id);
     if (!printer) return null;
     printer.readyOverride = true;
     printer.state = "ready";
-    return printer;
+    return this.withSpool(printer);
   }
 
   applySnapshot(id, snapshot) {
@@ -161,10 +167,10 @@ class PrinterConfigService {
   }
 
   toggleLight(id) {
-    const printer = this.getById(id);
+    const printer = this.getRaw(id);
     if (!printer) return null;
     printer.lightState = printer.lightState === "on" ? "off" : "on";
-    return printer;
+    return this.withSpool(printer);
   }
 
   markDispatched(id, file) {
@@ -193,7 +199,7 @@ class PrinterConfigService {
   }
 
   markServiceRestart(id, target) {
-    const printer = this.getById(id);
+    const printer = this.getRaw(id);
     if (!printer) return null;
     printer.powerState = "on";
     printer.powerOverride = "on";
@@ -202,7 +208,7 @@ class PrinterConfigService {
       ...printer.telemetry,
       currentFile: target === "moonraker" ? "Reiniciando Moonraker..." : "Reiniciando Klipper..."
     };
-    return printer;
+    return this.withSpool(printer);
   }
 }
 

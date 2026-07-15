@@ -8,6 +8,7 @@ import { StreamingSection } from "./components/StreamingSection";
 import { APP_VERSION } from "./config/version";
 import { fallbackData } from "./data/fallbackData";
 import { DashboardSection } from "./sections/DashboardSection";
+import { GuestStatusView } from "./sections/GuestStatusView";
 import {
   createPrinter,
   createLibraryFolder,
@@ -19,6 +20,7 @@ import {
   fetchNotificationStatus,
   fetchAssignmentPreview,
   fetchBootstrap,
+  fetchWhoami,
   importLibraryFile,
   markPrinterReady,
   moveLibraryFile,
@@ -38,6 +40,7 @@ import { getPushSubscription, subscribeToPush, unsubscribeFromPush } from "./ser
 const REFRESH_INTERVAL_MS = 8000;
 
 function App() {
+  const [role, setRole] = useState(null);
   const [data, setData] = useState(fallbackData);
   const [configPrinter, setConfigPrinter] = useState(null);
   const [streamingConfigOpen, setStreamingConfigOpen] = useState(false);
@@ -101,6 +104,14 @@ function App() {
       setIsRefreshing(false);
     }
   }, [applySnapshot]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchWhoami()
+      .then((data) => { if (!cancelled) setRole(data.role || "guest"); })
+      .catch(() => { if (!cancelled) setRole("guest"); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let socket;
@@ -457,6 +468,14 @@ function App() {
     ["library", "Biblioteca"],
     ["streaming", "Streaming"]
   ];
+
+  if (role === null) {
+    return <div className="min-h-screen bg-slate-950" />;
+  }
+
+  if (role !== "superuser") {
+    return <GuestStatusView />;
+  }
 
   return (
     <div className="panel-grid min-h-screen bg-grid px-3 py-3 text-slate-100 sm:px-4 xl:px-5">
