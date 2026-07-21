@@ -15,7 +15,7 @@ function buildEmbedUrl(cameraUrl) {
     if (source) {
       target.searchParams.set("src", source);
       target.searchParams.set("background", "false");
-      target.searchParams.set("mode", original.searchParams.get("mode") || "mjpeg");
+      target.searchParams.set("mode", original.searchParams.get("mode") || "mse");
     }
 
     return target.toString();
