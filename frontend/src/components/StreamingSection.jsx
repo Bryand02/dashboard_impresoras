@@ -15,7 +15,7 @@ function buildEmbedUrl(cameraUrl) {
     if (source) {
       target.searchParams.set("src", source);
       target.searchParams.set("background", "false");
-      target.searchParams.set("mode", original.searchParams.get("mode") || "webrtc");
+      target.searchParams.set("mode", original.searchParams.get("mode") || "webrtc,mse,mp4,mjpeg");
     }
 
     return target.toString();
